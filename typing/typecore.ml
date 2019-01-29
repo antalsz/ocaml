@@ -1708,7 +1708,7 @@ let type_class_arg_pattern cl_num val_env met_env l spat =
   let val_env = add_pattern_variables val_env (get_ref pattern_variables) in
   (pat, pv, val_env, met_env)
 
-let type_self_pattern cl_num privty val_env met_env par_env spat =
+let type_self_pattern cl_num env spat =
   let open Ast_helper in
   let spat =
     Pat.mk (Ppat_alias (Pat.mk(Ppat_alias (spat, mknoloc "selfpat-*")),
@@ -1716,40 +1716,11 @@ let type_self_pattern cl_num privty val_env met_env par_env spat =
   in
   reset_pattern None false;
   let nv = newvar() in
-  let pat = type_pat ~no_existentials:In_self_pattern (ref val_env) spat nv in
+  let pat = type_pat ~no_existentials:In_self_pattern (ref env) spat nv in
   List.iter (fun f -> f()) (get_ref pattern_force);
-  let meths = ref Meths.empty in
-  let vars = ref Vars.empty in
   let pv = !pattern_variables in
   pattern_variables := [];
-  let (val_env, met_env, par_env) =
-    List.fold_right
-      (fun {pv_id; pv_type; pv_loc; pv_as_var; pv_attributes}
-           (val_env, met_env, par_env) ->
-         (Env.add_value pv_id {val_type = pv_type;
-                               val_kind =
-                                 Val_unbound Val_unbound_instance_variable;
-                               val_attributes = pv_attributes;
-                               Types.val_loc = pv_loc;
-                              } val_env,
-          Env.add_value pv_id {val_type = pv_type;
-                               val_kind =
-                                 Val_self (meths, vars, cl_num, privty);
-                               val_attributes = pv_attributes;
-                               Types.val_loc = pv_loc;
-                              }
-            ~check:(fun s -> if pv_as_var then Warnings.Unused_var s
-                             else Warnings.Unused_var_strict s)
-            met_env,
-          Env.add_value pv_id {val_type = pv_type;
-                               val_kind =
-                                 Val_unbound Val_unbound_instance_variable;
-                               val_attributes = pv_attributes;
-                               Types.val_loc = pv_loc;
-                              } par_env))
-      pv (val_env, met_env, par_env)
-  in
-  (pat, meths, vars, val_env, met_env, par_env)
+  pat, pv
 
 let delayed_checks = ref []
 let reset_delayed_checks () = delayed_checks := []
@@ -2920,9 +2891,10 @@ and type_expect_
           match obj.exp_desc with
             Texp_ident(_path, _, {val_kind = Val_self (meths, _, _, privty)}) ->
               obj_meths := Some meths;
-              let (id, typ) =
-                filter_self_method env met Private meths privty
+              let new_meths, (id, typ) =
+                filter_self_method env met Private !meths privty
               in
+              meths := new_meths;
               if is_Tvar (repr typ) then
                 Location.prerr_warning loc
                   (Warnings.Undeclared_virtual_method met);
@@ -2942,9 +2914,10 @@ and type_expect_
                 (_, ({val_kind = Val_self (meths, _, _, privty)} as desc)),
                 (path, _) ->
                   obj_meths := Some meths;
-                  let (_, typ) =
-                    filter_self_method env met Private meths privty
+                  let (new_meths, (_, typ)) =
+                    filter_self_method env met Private !meths privty
                   in
+                  meths := new_meths;
                   let method_type = newvar () in
                   let (obj_ty, res_ty) = filter_arrow env method_type Nolabel in
                   unify env obj_ty desc.val_type;
