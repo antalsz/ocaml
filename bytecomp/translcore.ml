@@ -459,10 +459,9 @@ and transl_exp0 e =
                   ap_inlined=Default_inline;
                   ap_specialised=Default_specialise},
            List.fold_right
-             (fun (path, _, expr) rem ->
-               let var = transl_value_path e.exp_loc e.exp_env path in
+             (fun (id, _, expr) rem ->
                 Lsequence(transl_setinstvar Location.none
-                            (Lvar cpy) var expr, rem))
+                            (Lvar cpy) (Lvar id) expr, rem))
              modifs
              (Lvar cpy))
   | Texp_letmodule(id, loc, Mp_present, modl, body) ->

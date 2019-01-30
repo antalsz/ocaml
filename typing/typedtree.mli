@@ -219,7 +219,7 @@ and expression_desc =
   | Texp_new of Path.t * Longident.t loc * Types.class_declaration
   | Texp_instvar of Path.t * Path.t * string loc
   | Texp_setinstvar of Path.t * Path.t * string loc * expression
-  | Texp_override of Path.t * (Path.t * string loc * expression) list
+  | Texp_override of Path.t * (Ident.t * string loc * expression) list
   | Texp_letmodule of
       Ident.t * string loc * Types.module_presence * module_expr * expression
   | Texp_letexception of extension_constructor * expression
