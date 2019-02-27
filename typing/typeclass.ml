@@ -283,35 +283,48 @@ let rc node =
 let complete_class_signature loc env sign =
   let self = Ctype.expand_head env sign.Types.csig_self in
   let fields, row = Ctype.flatten_fields (Ctype.object_fields self) in
-  let meths, implicit_public =
+  let meths, implicit_public, implicit_declared =
     List.fold_left
-      (fun (meths, implicit_public) (lab, k, ty) ->
-         if lab = dummy_method then meths, implicit_public
+      (fun (meths, implicit_public, implicit_declared) (lab, k, ty) ->
+         if lab = dummy_method then meths, implicit_public, implicit_declared
          else begin
            match Meths.find lab meths with
            | priv, virt, ty' -> begin
-               match priv, Btype.field_kind_repr k with
-               | Public, _ -> meths, implicit_public
-               | Private, Fpresent ->
-                   let meths = Meths.add lab (Public, virt, ty') meths in
-                   let implicit_public = lab :: implicit_public in
-                   meths, implicit_public
-               | Private, _ -> meths, implicit_public
+               let meths, implicit_public =
+                 match priv, Btype.field_kind_repr k with
+                 | Public, _ -> meths, implicit_public
+                 | Private, Fpresent ->
+                     let meths = Meths.add lab (Public, virt, ty') meths in
+                     let implicit_public = lab :: implicit_public in
+                     meths, implicit_public
+                 | Private, _ -> meths, implicit_public
+               in
+               meths, implicit_public, implicit_declared
              end
            | exception Not_found -> begin
-               let meths =
+               let meths, implicit_declared =
                  match Btype.field_kind_repr k with
-                 | Fpresent -> Meths.add lab (Public, Virtual, ty) meths
-                 | Fvar _ -> Meths.add lab (Private, Virtual, ty) meths
-                 | Fabsent -> meths
+                 | Fpresent ->
+                     let meths = Meths.add lab (Public, Virtual, ty) meths in
+                     let implicit_declared = lab :: implicit_declared in
+                     meths, implicit_declared
+                 | Fvar _ ->
+                     let meths = Meths.add lab (Private, Virtual, ty) meths in
+                     let implicit_declared = lab :: implicit_declared in
+                     meths, implicit_declared
+                 | Fabsent -> meths, implicit_declared
                in
-               meths, implicit_public
+               meths, implicit_public, implicit_declared
              end
          end)
-      (sign.csig_meths, []) fields
+      (sign.csig_meths, [], []) fields
   in
   if implicit_public <> [] then
-    Location.prerr_warning loc (Warnings.Implicit_public_methods implicit_public);
+    Location.prerr_warning loc
+      (Warnings.Implicit_public_methods implicit_public);
+  if implicit_declared <> [] then
+    Location.prerr_warning loc
+      (Warnings.Undeclared_virtual_method implicit_declared);
   sign.csig_meths <- meths;
   sign.csig_self_row <- row;
   Ctype.hide_private_methods self

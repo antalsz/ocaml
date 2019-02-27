@@ -43,7 +43,7 @@ type t =
   | Illegal_backslash                       (* 14 *)
   | Implicit_public_methods of string list  (* 15 *)
   | Unerasable_optional_argument            (* 16 *)
-  | Undeclared_virtual_method of string     (* 17 *)
+  | Undeclared_virtual_method of string list (* 17 *)
   | Not_principal of string                 (* 18 *)
   | Without_principality of string          (* 19 *)
   | Unused_argument                         (* 20 *)

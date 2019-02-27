@@ -2899,7 +2899,7 @@ and type_expect_
               meths := new_meths;
               if not existing then
                 Location.prerr_warning loc
-                  (Warnings.Undeclared_virtual_method met);
+                  (Warnings.Undeclared_virtual_method [met]);
               (Tmeth_val id, None, typ)
           | Texp_ident(_path, lid, {val_kind = Val_anc (methods, cl_num)}) ->
               let method_id =

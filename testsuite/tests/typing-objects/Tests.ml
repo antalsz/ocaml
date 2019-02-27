@@ -985,6 +985,10 @@ class type ['a] ct = object ('a) end
 class c : [ < a : int; ..> ] ct = object method a = 3 end;;
 [%%expect {|
 class type ['a] ct = object ('a) constraint 'a = < .. > end
+Line 2, characters 10-31:
+2 | class c : [ < a : int; ..> ] ct = object method a = 3 end;;
+              ^^^^^^^^^^^^^^^^^^^^^
+Warning 17: the virtual method a is not declared.
 Line 2, characters 0-57:
 2 | class c : [ < a : int; ..> ] ct = object method a = 3 end;;
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -993,6 +997,10 @@ Error: This class should be virtual. The following methods are undefined : a
 
 class virtual c : [ < a : int; ..> ] ct = object method a = 3 end;;
 [%%expect {|
+Line 1, characters 18-39:
+1 | class virtual c : [ < a : int; ..> ] ct = object method a = 3 end;;
+                      ^^^^^^^^^^^^^^^^^^^^^
+Warning 17: the virtual method a is not declared.
 class virtual c : object method virtual a : int end
 |}];;
 
@@ -1051,6 +1059,10 @@ class virtual c =
   ((fun (x : 'self -> unit) -> object(_:'self) end) (fun (_ : < a : int; .. >) -> ())
    : object method virtual a : int end)
 [%%expect {|
+Line 2, characters 3-85:
+2 |   ((fun (x : 'self -> unit) -> object(_:'self) end) (fun (_ : < a : int; .. >) -> ())
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Warning 17: the virtual method a is not declared.
 class virtual c : object method virtual a : int end
 |}, Principal{|
 Line 2, characters 37-46:
@@ -1187,6 +1199,10 @@ let has_foo (x : < foo : int; ..>) = ()
 class c = object(self) initializer has_foo self end;;
 [%%expect {|
 val has_foo : < foo : int; .. > -> unit = <fun>
+Line 2, characters 10-51:
+2 | class c = object(self) initializer has_foo self end;;
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Warning 17: the virtual method foo is not declared.
 Line 2, characters 0-51:
 2 | class c = object(self) initializer has_foo self end;;
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1206,6 +1222,10 @@ Error: This expression has type <  > but an expression was expected of type
 
 class c = object(_ : < foo : int; ..>) end;;
 [%%expect {|
+Line 1, characters 10-42:
+1 | class c = object(_ : < foo : int; ..>) end;;
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Warning 17: the virtual method foo is not declared.
 Line 1, characters 0-42:
 1 | class c = object(_ : < foo : int; ..>) end;;
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1215,6 +1235,10 @@ Error: This class should be virtual.
 
 class type ct = object(< foo : int; ..>) end;;
 [%%expect {|
+Line 1, characters 16-44:
+1 | class type ct = object(< foo : int; ..>) end;;
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Warning 17: the virtual method foo is not declared.
 Line 1, characters 0-44:
 1 | class type ct = object(< foo : int; ..>) end;;
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1224,6 +1248,10 @@ Error: This class type should be virtual.
 
 let o = object(_ : < foo : int; ..>) end;;
 [%%expect {|
+Line 1, characters 8-40:
+1 | let o = object(_ : < foo : int; ..>) end;;
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Warning 17: the virtual method foo is not declared.
 Line 1, characters 8-40:
 1 | let o = object(_ : < foo : int; ..>) end;;
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
