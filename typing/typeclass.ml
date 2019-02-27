@@ -280,38 +280,46 @@ let rc node =
   Stypes.record (Stypes.Ti_class node); (* moved to genannot *)
   node
 
-let complete_class_signature env sign =
+let complete_class_signature loc env sign =
   let self = Ctype.expand_head env sign.Types.csig_self in
   let fields, row = Ctype.flatten_fields (Ctype.object_fields self) in
-  let meths =
+  let meths, implicit_public =
     List.fold_left
-      (fun meths (lab, k, ty) ->
-         if lab = dummy_method then meths
+      (fun (meths, implicit_public) (lab, k, ty) ->
+         if lab = dummy_method then meths, implicit_public
          else begin
            match Meths.find lab meths with
            | priv, virt, ty' -> begin
                match priv, Btype.field_kind_repr k with
-               | Public, _ -> meths
-               | Private, Fpresent -> Meths.add lab (Public, virt, ty') meths
-               | Private, _ -> meths
+               | Public, _ -> meths, implicit_public
+               | Private, Fpresent ->
+                   let meths = Meths.add lab (Public, virt, ty') meths in
+                   let implicit_public = lab :: implicit_public in
+                   meths, implicit_public
+               | Private, _ -> meths, implicit_public
              end
            | exception Not_found -> begin
-               match Btype.field_kind_repr k with
-               | Fpresent -> Meths.add lab (Public, Virtual, ty) meths
-               | Fvar _ -> Meths.add lab (Private, Virtual, ty) meths
-               | Fabsent -> meths
+               let meths =
+                 match Btype.field_kind_repr k with
+                 | Fpresent -> Meths.add lab (Public, Virtual, ty) meths
+                 | Fvar _ -> Meths.add lab (Private, Virtual, ty) meths
+                 | Fabsent -> meths
+               in
+               meths, implicit_public
              end
          end)
-      sign.csig_meths fields
+      (sign.csig_meths, []) fields
   in
+  if implicit_public <> [] then
+    Location.prerr_warning loc (Warnings.Implicit_public_methods implicit_public);
   sign.csig_meths <- meths;
   sign.csig_self_row <- row;
   Ctype.hide_private_methods self
 
 
-let complete_class_type env typ =
+let complete_class_type loc env typ =
   let sign = Ctype.signature_of_class_type typ in
-  complete_class_signature env sign
+  complete_class_signature loc env sign
 
                 (***********************************)
                 (*  Primitives for typing classes  *)
@@ -764,7 +772,7 @@ let rec class_field_first_pass self_loc cl_num self_type acc cf =
       Builtin_attributes.warning_scope cf.pcf_attributes
         (fun () ->
            let parent = class_expr cl_num val_env par_env sparent in
-           complete_class_type par_env parent.cl_type;
+           complete_class_type parent.cl_loc par_env parent.cl_type;
            let inher =
              match parent.cl_type with
              | Cty_constr (p, tl, _) -> (p, tl) :: inher
@@ -1188,10 +1196,6 @@ and class_structure cl_num final val_env met_env loc
   Ctype.unify val_env self_type (Ctype.newvar ());
 
   let methods = get_methods self_type in
-  let priv_meths =
-    List.filter (fun (_,kind,_) -> Btype.field_kind_repr kind <> Fpresent)
-      methods
-  in
   if final then begin
     (* Unify private_self and a copy of self_type. self_type will not
        be modified after this point *)
@@ -1240,15 +1244,6 @@ and class_structure cl_num final val_env met_env loc
     class_fields_second_pass cl_num self_type self_meths met_env fields
   in
 
-  (* Check for private methods made public *)
-  let pub_meths' =
-    List.filter (fun (_,kind,_) -> Btype.field_kind_repr kind = Fpresent)
-      (get_methods public_self) in
-  let names = List.map (fun (x,_,_) -> x) in
-  let l1 = names priv_meths and l2 = names pub_meths' in
-  let added = List.filter (fun x -> List.mem x l1) l2 in
-  if added <> [] then
-    Location.prerr_warning loc (Warnings.Implicit_public_methods added);
   let sig_vars = Vars.map (fun (_, mut, virt, ty) -> (mut, virt, ty)) vars in
   let sig_meths =
     Meths.map (fun (_, priv, virt, ty) -> (priv, virt, ty)) !meths_ref
@@ -1560,11 +1555,11 @@ and class_expr_aux cl_num val_env met_env scl =
       Ctype.begin_class_def ();
       let context = Typetexp.narrow () in
       let cl = class_expr cl_num val_env met_env scl' in
-      complete_class_type val_env cl.cl_type;
+      complete_class_type cl.cl_loc val_env cl.cl_type;
       Typetexp.widen context;
       let context = Typetexp.narrow () in
       let clty = class_type val_env scty in
-      complete_class_type val_env clty.cltyp_type;
+      complete_class_type clty.cltyp_loc val_env clty.cltyp_type;
       Typetexp.widen context;
       Ctype.end_def ();
 
@@ -2083,12 +2078,12 @@ let class_num = ref 0
 let class_declaration env sexpr =
   incr class_num;
   let expr = class_expr (Int.to_string !class_num) env env sexpr in
-  complete_class_type env expr.cl_type;
+  complete_class_type expr.cl_loc env expr.cl_type;
   (expr, expr.cl_type)
 
 let class_description env sexpr =
   let expr = class_type env sexpr in
-  complete_class_type env expr.cltyp_type;
+  complete_class_type expr.cltyp_loc env expr.cltyp_type;
   (expr, expr.cltyp_type)
 
 let class_declarations env cls =
@@ -2154,7 +2149,7 @@ let type_object env loc s =
   let desc =
     class_structure (Int.to_string !class_num) true env env loc s
   in
-  complete_class_signature env desc.cstr_type;
+  complete_class_signature loc env desc.cstr_type;
   let virtual_meths = virtual_methods desc.cstr_type in
   let virtual_vals = virtual_vars desc.cstr_type in
   if virtual_meths <> []  || virtual_vals <> [] then

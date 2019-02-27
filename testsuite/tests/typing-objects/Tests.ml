@@ -1111,6 +1111,11 @@ class c : object method foo : int end
 
 class type c = object(< foo : 'a; ..>) method private foo : int end;;
 [%%expect {|
+Line 1, characters 15-67:
+1 | class type c = object(< foo : 'a; ..>) method private foo : int end;;
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Warning 15: the following private methods were made public implicitly:
+ foo.
 class type c = object method foo : int end
 |}];;
 
@@ -1119,6 +1124,11 @@ class c = [ < foo : int; .. > ] p;;
 [%%expect {|
 class ['a] p :
   object ('a) constraint 'a = < .. > method private foo : int end
+Line 2, characters 10-33:
+2 | class c = [ < foo : int; .. > ] p;;
+              ^^^^^^^^^^^^^^^^^^^^^^^
+Warning 15: the following private methods were made public implicitly:
+ foo.
 class c : object method foo : int end
 |}];;
 
