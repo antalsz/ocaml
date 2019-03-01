@@ -259,7 +259,7 @@ and value_kind =
       (Ident.t * mutable_flag * virtual_flag * type_expr) Vars.t *
       string
                                         (* Self *)
-  | Val_anc of (string * Ident.t) list * string
+  | Val_anc of (Ident.t * type_expr) Meths.t * string
                                         (* Ancestor *)
   | Val_unbound of value_unbound_reason (* Unbound variable *)
 

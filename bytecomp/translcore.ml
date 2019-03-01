@@ -420,16 +420,25 @@ and transl_exp0 e =
   | Texp_for(param, _, low, high, dir, body) ->
       Lfor(param, transl_exp low, transl_exp high, dir,
            event_before body (transl_exp body))
-  | Texp_send(_, _, Some exp) -> transl_exp exp
-  | Texp_send(expr, met, None) ->
-      let obj = transl_exp expr in
+  | Texp_send(expr, met) ->
       let lam =
         match met with
-          Tmeth_val id -> Lsend (Self, Lvar id, obj, [], e.exp_loc)
+        | Tmeth_val id ->
+            let obj = transl_exp expr in
+            Lsend (Self, Lvar id, obj, [], e.exp_loc)
         | Tmeth_name nm ->
+            let obj = transl_exp expr in
             let (tag, cache) = Translobj.meth obj nm in
             let kind = if cache = [] then Public else Cached in
             Lsend (kind, tag, obj, cache, e.exp_loc)
+        | Tmeth_ancestor(meth, path_self) ->
+            let self = transl_value_path e.exp_loc e.exp_env path_self in
+            Lapply {ap_should_be_tailcall = false;
+                    ap_loc = e.exp_loc;
+                    ap_func = Lvar meth;
+                    ap_args = [self];
+                    ap_inlined = Default_inline;
+                    ap_specialised = Default_specialise}
       in
       event_after e lam
   | Texp_new (cl, {Location.loc=loc}, _) ->

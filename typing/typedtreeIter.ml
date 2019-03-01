@@ -334,13 +334,8 @@ module MakeIterator(Iter : IteratorArgument) : sig
             iter_expression exp1;
             iter_expression exp2;
             iter_expression exp3
-        | Texp_send (exp, _meth, expo) ->
-            iter_expression exp;
-          begin
-            match expo with
-                None -> ()
-              | Some exp -> iter_expression exp
-          end
+        | Texp_send (exp, _meth) ->
+            iter_expression exp
         | Texp_new _ -> ()
         | Texp_instvar _ -> ()
         | Texp_setinstvar (_, _, _, exp) ->
