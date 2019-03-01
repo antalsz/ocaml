@@ -3043,6 +3043,13 @@ let rec filter_method_field env name priv ty =
         ty1
       end else
         filter_method_field env name priv ty2
+  | Tnil ->
+      if name = Btype.dummy_method then raise (Unify [])
+      else begin
+        match priv with
+        | Public -> raise (Unify [])
+        | Private -> newvar2 ty.level
+      end
   | _ ->
       raise (Unify [])
 

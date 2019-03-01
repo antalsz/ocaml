@@ -95,6 +95,7 @@ type kind =
 type error =
     Unconsistent_constraint of Ctype.Unification_trace.t
   | Field_type_mismatch of string * string * Ctype.Unification_trace.t
+  | Unexpected_field of type_expr * string
   | Structure_expected of class_type
   | Cannot_apply of class_type
   | Apply_wrong_label of arg_label
