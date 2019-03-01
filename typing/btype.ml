@@ -45,6 +45,8 @@ let new_id = ref (-1)
 
 let newty2 level desc  =
   incr new_id; { desc; level; scope = lowest_level; id = !new_id }
+let newty3 ~level ~scope desc =
+  incr new_id; { desc; level; scope; id = !new_id }
 let newgenty desc      = newty2 generic_level desc
 let newgenvar ?name () = newgenty (Tvar name)
 (*
