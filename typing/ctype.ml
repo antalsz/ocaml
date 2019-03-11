@@ -438,8 +438,7 @@ let remove_object_name ty =
 
 let hide_private_methods ty =
   match (repr ty).desc with
-    Tobject (fi, nm) ->
-      nm := None;
+    Tobject (fi, _) ->
       let (fl, _) = flatten_fields fi in
       List.iter
         (function (_, k, _) ->

@@ -140,7 +140,6 @@ val close_object: type_expr -> bool
 val set_object_name:
         Ident.t -> type_expr list -> type_expr -> unit
 val remove_object_name: type_expr -> unit
-val hide_private_methods: type_expr -> unit
 val find_cltype_for_path: Env.t -> Path.t -> type_declaration * type_expr
 val lid_of_path: ?hash:string -> Path.t -> Longident.t
 
