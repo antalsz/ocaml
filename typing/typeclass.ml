@@ -90,7 +90,7 @@ type error =
   | Mutability_mismatch of string * mutable_flag
   | No_overriding of string * string
   | Duplicate of string * string
-  | Closing_self_type of type_expr
+  | Closing_self_type of class_signature
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error
@@ -1008,13 +1008,12 @@ and class_structure cl_num virt self_scope final val_env met_env loc
   (* Check for unexpected virtual methods *)
   check_virtual loc val_env virt (kind_of_final final) sign;
 
-  (* Close the self type if it is final *)
+  (* Close the signature if it is final *)
   begin match final with
   | Not_final -> ()
   | Final ->
-      let self_type = sign.csig_self in
-      if not (Ctype.close_object (Ctype.expand_head val_env self_type)) then
-        raise(Error(loc, val_env, Closing_self_type self_type));
+      if not (Ctype.close_class_signature val_env sign) then
+        raise(Error(loc, val_env, Closing_self_type sign));
   end;
   (* Typing of method bodies *)
   (* Generalize the spine of methods accessed through self *)
@@ -2104,12 +2103,12 @@ let report_error env ppf = function
   | Duplicate (kind, name) ->
       fprintf ppf "@[The %s `%s'@ has multiple definitions in this object@]"
                     kind name
-  | Closing_self_type self ->
+  | Closing_self_type sign ->
     fprintf ppf
       "@[Cannot close type of object literal:@ %a@,\
        it has been unified with the self type of a class that is not yet@ \
        completely defined.@]"
-      Printtyp.type_scheme self
+      Printtyp.type_scheme sign.csig_self
 
 let report_error env ppf err =
   Printtyp.wrap_printing_env ~error:true

@@ -390,24 +390,6 @@ let concrete_object ty =
   | Tvar _             -> false
   | _                  -> true
 
-(**** Close an object ****)
-
-let close_object ty =
-  let rec close ty =
-    let ty = repr ty in
-    match ty.desc with
-      Tvar _ ->
-        link_type ty (newty2 ty.level Tnil); true
-    | Tfield(lab, _, _, _) when lab = dummy_method ->
-        false
-    | Tfield(_, _, _, ty') -> close ty'
-    | Tnil -> true
-    | _                    -> assert false
-  in
-  match (repr ty).desc with
-    Tobject (ty, _)   -> close ty
-  | _                 -> assert false
-
 (**** Row variable of an object type ****)
 
 let rec fields_row_variable ty =
@@ -3033,41 +3015,27 @@ let filter_arrow env t l =
       raise (Unify [])
 
 (* Used by [filter_method]. *)
-let rec filter_method_field env name priv ty =
+let rec filter_method_field env name ty =
   let ty = expand_head_trace env ty in
   match ty.desc with
     Tvar _ ->
       let level = ty.level in
       let ty1 = newvar2 level and ty2 = newvar2 level in
-      let ty' = newty2 level (Tfield (name,
-                                      begin match priv with
-                                        Private -> Fvar (ref None)
-                                      | Public  -> Fpresent
-                                      end,
-                                      ty1, ty2))
-      in
+      let ty' = newty2 level (Tfield (name, Fpresent, ty1, ty2)) in
       link_type ty ty';
       ty1
   | Tfield(n, kind, ty1, ty2) ->
       let kind = field_kind_repr kind in
       if (n = name) && (kind <> Fabsent) then begin
-        if priv = Public then
-          unify_kind kind Fpresent;
+        unify_kind kind Fpresent;
         ty1
       end else
-        filter_method_field env name priv ty2
-  | Tnil ->
-      if name = Btype.dummy_method then raise (Unify [])
-      else begin
-        match priv with
-        | Public -> raise (Unify [])
-        | Private -> newvar2 ty.level
-      end
+        filter_method_field env name ty2
   | _ ->
       raise (Unify [])
 
 (* Unify [ty] and [< name : 'a; .. >]. Return ['a]. *)
-let filter_method env name priv ty =
+let filter_method env name ty =
   let ty = expand_head_trace env ty in
   match ty.desc with
     Tvar _ ->
@@ -3076,14 +3044,47 @@ let filter_method env name priv ty =
       update_level env ty.level ty';
       update_scope ty.scope ty';
       link_type ty ty';
-      filter_method_field env name priv ty1
+      filter_method_field env name ty1
   | Tobject(f, _) ->
-      filter_method_field env name priv f
+      filter_method_field env name f
   | _ ->
       raise (Unify [])
 
-let check_filter_method env name priv ty =
-  ignore(filter_method env name priv ty)
+let rec filter_method_row env name priv ty =
+  let ty = expand_head_trace env ty in
+  match ty.desc with
+  | Tvar _ ->
+      let level = ty.level in
+      let field = newvar2 level in
+      let row = newvar2 level in
+      let kind =
+        match priv with
+        | Private -> Fvar (ref None)
+        | Public  -> Fpresent
+      in
+      let ty' = newty2 level (Tfield (name, kind, field, row)) in
+      link_type ty ty';
+      field, row
+  | Tfield(n, kind, ty1, ty2) ->
+      let kind = field_kind_repr kind in
+      if (n = name) && (kind <> Fabsent) then begin
+        if priv = Public then
+          unify_kind kind Fpresent;
+        ty1, ty2
+      end else begin
+        let field, row = filter_method_row env name priv ty2 in
+        let row = newty2 ty.level (Tfield (n, kind, ty1, row)) in
+        field, row
+      end
+  | Tnil ->
+      if name = Btype.dummy_method then raise (Unify [])
+      else begin
+        match priv with
+        | Public -> raise (Unify [])
+        | Private -> newvar2 ty.level, ty
+      end
+  | _ ->
+      raise (Unify [])
 
 (* Operations on class signatures *)
 
@@ -3097,8 +3098,11 @@ let new_class_signature () =
     csig_inher = []; }
 
 let add_dummy_method env ~scope sign =
-  unify env (filter_method_field env dummy_method Private sign.csig_self_row)
-    (new_scoped_ty scope (Ttuple []))
+  let ty, row =
+    filter_method_row env dummy_method Private sign.csig_self_row
+  in
+  unify env ty (new_scoped_ty scope (Ttuple []));
+  sign.csig_self_row <- row
 
 type add_method_failure =
   | Unexpected_method
@@ -3127,14 +3131,17 @@ let add_method env label priv virt ty sign =
             raise (Add_method_failed (Type_mismatch trace))
       end
     | exception Not_found -> begin
-        let ty' =
-          match filter_method env label priv sign.csig_self with
-          | ty' -> ty'
+        let ty', row =
+          match filter_method_row env label priv sign.csig_self_row with
+          | ty', row ->
+              ty', row
           | exception Unify _ ->
               raise (Add_method_failed Unexpected_method)
         in
         match unify env ty ty' with
-        | () -> priv, virt
+        | () ->
+            sign.csig_self_row <- row;
+            priv, virt
         | exception Unify trace ->
             raise (Add_method_failed (Type_mismatch trace))
       end
@@ -3263,6 +3270,19 @@ let complete_class_signature env sign =
   hide_private_methods self;
   implicit_public, implicit_declared
 
+let close_class_signature env sign =
+  let rec close env ty =
+    let ty = expand_head_trace env ty in
+    match ty.desc with
+    | Tvar _ ->
+        link_type ty (newty2 ty.level Tnil); true
+    | Tfield(lab, _, _, _) when lab = dummy_method ->
+        false
+    | Tfield(_, _, _, ty') -> close env ty'
+    | Tnil -> true
+    | _ -> assert false
+  in
+  close env sign.csig_self_row
 
                         (***********************************)
                         (*  Matching between type schemes  *)
