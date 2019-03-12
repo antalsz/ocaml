@@ -1458,8 +1458,8 @@ let same_types env1 env2 =
 
 let used_persistent () =
   Persistent_env.fold persistent_env
-    (fun s _m r -> Concr.add s r)
-    Concr.empty
+    (fun s _m r -> String.Set.add s r)
+    String.Set.empty
 
 let find_all_comps proj s (p,(mcomps, _)) =
   match get_components mcomps with

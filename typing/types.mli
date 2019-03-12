@@ -236,7 +236,10 @@ module TypeOps : sig
   val hash : t -> int
 end
 
-(* Maps of methods and instance variables *)
+(* Sets and maps of methods and instance variables *)
+
+module MethSet : Set.S with type elt = string
+module VarSet : Set.S with type elt = string
 
 module Meths : Map.S with type key = string
 module Vars  : Map.S with type key = string
@@ -379,8 +382,6 @@ and type_transparence =
   | Type_private     (* private type *)
 
 (* Type expressions for the class language *)
-
-module Concr : Set.S with type elt = string
 
 type class_type =
     Cty_constr of Path.t * type_expr list * class_type

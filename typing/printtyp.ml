@@ -532,7 +532,7 @@ type best_path = Paths of Path.t list | Best of Path.t
 let printing_depth = ref 0
 let printing_cont = ref ([] : Env.iter_cont list)
 let printing_old = ref Env.empty
-let printing_pers = ref Concr.empty
+let printing_pers = ref String.Set.empty
 let printing_map = ref Path.Map.empty
 
 let same_type t t' = repr t == repr t'
@@ -587,7 +587,7 @@ let rec path_size = function
 
 let same_printing_env env =
   let used_pers = Env.used_persistent () in
-  Env.same_types !printing_old env && Concr.equal !printing_pers used_pers
+  Env.same_types !printing_old env && String.Set.equal !printing_pers used_pers
 
 let set_printing_env env =
   printing_env := env;
