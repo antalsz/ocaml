@@ -97,13 +97,18 @@ and value_kind =
   | Val_prim of Primitive.description   (* Primitive *)
   | Val_ivar of mutable_flag * string   (* Instance variable (mutable ?) *)
   | Val_self of
-      (Ident.t * private_flag * virtual_flag * type_expr) Meths.t ref *
+      self_var_kind *
       (Ident.t * mutable_flag * virtual_flag * type_expr) Vars.t *
-      string * type_expr
+      string
                                         (* Self *)
   | Val_anc of (string * Ident.t) list * string
                                         (* Ancestor *)
   | Val_unbound of value_unbound_reason (* Unbound variable *)
+
+and self_var_kind =
+  | Self_concrete of (Ident.t * private_flag * virtual_flag * type_expr) Meths.t
+  | Self_virtual of
+      (Ident.t * private_flag * virtual_flag * type_expr) Meths.t ref * type_expr
 
 and value_unbound_reason =
   | Val_unbound_instance_variable

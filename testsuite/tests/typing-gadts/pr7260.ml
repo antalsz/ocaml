@@ -25,14 +25,6 @@ Line 8, characters 2-96:
 10 |       match ty with
 11 |       | Int -> (this :> bar)
 12 |   end.................................
-Warning 17: the virtual method bar is not declared.
-Line 7, characters 0-108:
- 7 | class foo =
- 8 |   object (this)
- 9 |     method foo (Dyn ty) =
-10 |       match ty with
-11 |       | Int -> (this :> bar)
-12 |   end.................................
-Error: This class should be virtual.
-       The following methods are undefined : bar
+Error: This class has undeclared virtual methods.
+       The following virtual methods were not declared : bar
 |}];;
