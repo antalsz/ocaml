@@ -19,7 +19,7 @@ end and ['a] d () = object
 end;;
 [%%expect{|
 class ['a] c : unit -> object constraint 'a = int method f : int c end
-and ['a] d : unit -> object constraint 'a = int method f : int c end
+and ['a] d : unit -> object constraint 'a = int method f : 'a c end
 |}];;
 (* class ['a] c : unit -> object constraint 'a = int method f : 'a c end *)
 (* and ['a] d : unit -> object constraint 'a = int method f : 'a c end *)
@@ -147,9 +147,9 @@ end;;
 class ['a, 'b] d :
   unit ->
   object
-    constraint 'a = int -> 'c
-    constraint 'b = 'a * < x : 'b > * 'c * 'd
-    method f : 'a -> 'b -> unit
+    constraint 'a = int -> 'd
+    constraint 'b = 'a * (< x : 'b > as 'c) * 'd * 'e
+    method f : (int -> 'd) -> (int -> 'd) * 'c * 'd * 'e -> unit
   end
 |}];;
 
@@ -300,7 +300,7 @@ class ['a, 'b] d :
     constraint 'a = int -> bool
     val x : float list
     val y : 'b
-    method f : 'a -> unit
+    method f : (int -> bool) -> unit
     method g : 'b
   end
 |}];;
@@ -313,7 +313,7 @@ class ['a, 'b] e :
     constraint 'a = int -> bool
     val x : float list
     val y : 'b
-    method f : 'a -> unit
+    method f : (int -> bool) -> unit
     method g : 'b
   end
 |}];;
@@ -922,12 +922,8 @@ Error: This kind of recursive class expression is not allowed
 class c = object method private m = 3 end
   and d = object method o = object inherit c end end;;
 [%%expect {|
-Line 2, characters 28-48:
-2 |   and d = object method o = object inherit c end end;;
-                                ^^^^^^^^^^^^^^^^^^^^
-Error: Cannot close type of object literal: < _.. >
-       it has been unified with the self type of a class that is not yet
-       completely defined.
+class c : object method private m : int end
+and d : object method o : c end
 |}];;
 
 class c = object(_ : 'self) method o = object (_ : 'self) end end;;
@@ -961,8 +957,7 @@ let o = object
   end;;
 [%%expect {|
 class ['a] c : object ('a) constraint 'a = < .. > end
-Uncaught exception: File "typing/ctype.ml", line 413, characters 30-36: Assertion failed
-
+val o : < m : int > = <obj>
 |}];;
 
 class type [ 'a ] d = object method a : 'a method b : 'a end
@@ -1011,7 +1006,7 @@ Error: The class type object ('a) method m : 'a end
          object method m : < m : 'a > as 'a end
        The method m has type < m : 'a; .. > as 'a
        but is expected to have type < m : 'b > as 'b
-       Type < m : 'a; .. > as 'a is not compatible with type < m : 'b > as 'b
+       Type 'a is not compatible with type <  >
 |}];;
 
 class c :
@@ -1077,11 +1072,10 @@ Line 2, characters 4-52:
 Error: The class type object ('a) method m : 'a -> unit end
        is not matched by the class type
          object method m : < m : 'a; x : int; .. > -> unit as 'a end
-       The method m has type (< m : 'a; .. > as 'b) -> unit as 'a
+       The method m has type (< m : 'a -> unit; .. > as 'a) -> unit
        but is expected to have type
-         'c. (< m : 'd; x : int; .. > as 'c) -> unit as 'd
-       Type < m : 'a; .. > as 'b is not compatible with type
-         < m : 'd; x : int; .. > as 'e
+         'b. (< m : 'c; x : int; .. > as 'b) -> unit as 'c
+       Type 'a is not compatible with type < x : int; .. >
 |}];;
 
 let is_empty (x : < >) = ()
