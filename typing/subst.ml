@@ -320,9 +320,6 @@ let class_signature scope s sign =
       Meths.map
         (function (p, v, t) -> (p, v, typexp scope s t))
         sign.csig_meths;
-    csig_inher =
-      List.map (fun (p, tl) -> (type_path s p, List.map (typexp scope s) tl))
-        sign.csig_inher;
   }
 
 let rec class_type scope s = function
