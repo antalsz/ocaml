@@ -54,7 +54,13 @@ end = struct
     (** last update time *)
   }
 
-  (* CR def for lpw25: why distinguish edges and alias edges ? *)
+  (* CR def for lpw25: why distinguish edges and alias edges ?
+
+     lpw25: We treat edges and alias edges separately because aliases
+     require more work. If A -- B -- C are connected by ordinary edges,
+     then we know that A -- C will already be connected by an edge. If
+     instead one of the edges is an alias edge then we will need to add
+     the A -- C edge ourselves. *)
 
   type t =
     { mutable stamp : Stamp.t;
@@ -92,38 +98,38 @@ end = struct
   let update t dep item =
     if Stamp.less_than item.last t.stamp then begin
       (* Recompute closure *)
-      let rec add_edges item acc =
-        let rec loop acc added = function
+      let rec add_edges t item acc =
+        let rec loop t acc added = function
           | [] ->
               List.fold_left
                 (fun acc dep ->
                    let item = Dependency.Array.get t.items dep in
-                   add_alias_edges item acc)
+                   add_alias_edges t item acc)
                 acc added
           | dep :: rest ->
-              if Dependency.Set.mem dep acc then loop acc added rest
+              if Dependency.Set.mem dep acc then loop t acc added rest
               else begin
                 let acc = Dependency.Set.add dep acc in
                 let added = dep :: added in
-                loop acc added rest
+                loop t acc added rest
               end
         in
-        loop acc [] item.edges
-      and add_alias_edges item acc =
+        loop t acc [] item.edges
+      and add_alias_edges t item acc =
         List.fold_left
           (fun acc dep ->
              if Dependency.Set.mem dep acc then acc
              else begin
                let acc = Dependency.Set.add dep acc in
                let item = Dependency.Array.get t.items dep in
-               let acc = add_edges item acc in
-               add_alias_edges item acc
+               let acc = add_edges t item acc in
+               add_alias_edges t item acc
              end)
           acc item.alias_edges
       in
       let set = Dependency.Set.singleton dep in
-      let set = add_edges item set in
-      let set = add_alias_edges item set in
+      let set = add_edges t item set in
+      let set = add_alias_edges t item set in
       item.set <- set;
       item.last <- t.stamp
     end
