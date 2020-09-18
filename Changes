@@ -1,6 +1,172 @@
 Working version
 ---------------
 
+### Language features:
+
+### Runtime system:
+
+- #1795, #9543: modernize signal handling on Linux i386, PowerPC, and s390x,
+  adding support for Musl ppc64le along the way.
+  (Xavier Leroy and Anil Madhavapeddy, review by Stephen Dolan)
+
+- #9466: Memprof: optimize random samples generation.
+  (Jacques-Henri Jourdan review by Xavier Leroy and Stephen Dolan)
+
+- #9508: Remove support for FreeBSD prior to 4.0R, that required explicit
+  floating-point initialization to behave like IEEE standard
+  (Hannes Mehnert, review by David Allsopp)
+
+* #9513: Selectively initialise blocks in `Obj.new_block`. Reject `Custom_tag`
+  objects and zero-length `String_tag` objects.
+  (KC Sivaramakrishnan, review by David Allsopp, Xavier Leroy, Mark Shinwell
+  and Leo White)
+
+- #9564: Add a macro to construct out-of-heap block header.
+  (KC Sivaramakrishnan, review by Stephen Dolan, Gabriel Scherer,
+   and Xavier Leroy)
+
+- #9569: Add `Val_none`, `Some_val`, `Is_none`, `Is_some`, `caml_alloc_some`,
+  and `Tag_some`.
+  (Nicolás Ojeda Bär, review by Stephen Dolan, Gabriel Scherer, Mark Shinwell,
+  and Xavier Leroy)
+
+- #9619: Change representation of function closures so that code pointers
+  can be easily distinguished from environment variables
+  (Xavier Leroy, review by Mark Shinwell and Damien Doligez)
+
+- #9634: Allow initial and repeated commas in `OCAMLRUNPARAM`.
+  (Nicolás Ojeda Bär, review by Gabriel Scherer)
+
+### Code generation and optimizations:
+
+- #9441: Add RISC-V RV64G native-code backend.
+  (Nicolás Ojeda Bär, review by Xavier Leroy and Gabriel Scherer)
+
+- #9620: Limit the number of parameters for an uncurried or untupled
+   function.  Functions with more parameters than that are left
+   partially curried or tupled.
+   (Xavier Leroy, review by Mark Shinwell)
+
+### Standard library:
+
+* #9554: add primitive __FUNCTION__ that returns the name of the current method
+  or function, including any enclosing module or class.
+  (Nicolás Ojeda Bär, Stephen Dolan, review by Stephen Dolan)
+
+- #9075: define to_rev_seq in Set and Map modules.
+  (Sébastien Briais, review by Gabriel Scherer and Nicolás Ojeda Bär)
+
+- #9561: Unbox Unix.gettimeofday and Unix.time
+  (Stephen Dolan, review by David Allsopp)
+
+- #9570: Provide an Atomic module with a trivial purely-sequential
+  implementation, to help write code that is compatible with Multicore
+  OCaml.
+  (Gabriel Scherer, review by Xavier Leroy)
+
+- #9571: Make at_exit and Printexc.register_printer thread-safe.
+  (Guillaume Munch-Maccagnoni, review by Gabriel Scherer and Xavier Leroy)
+
+- #9587: Arg: new Rest_all spec to get all rest arguments in a list
+  (this is similar to Rest, but makes it possible to detect when there
+   are no arguments (an empty list) after the rest marker)
+  (Gabriel Scherer, review by Nicolás Ojeda Bär and David Allsopp)
+
+### Other libraries:
+
+* #9206, #9419: update documentation of the threads library;
+  deprecate Thread.kill, Thread.wait_read, Thread.wait_write,
+  and the whole ThreadUnix module.
+  (Xavier Leroy, review by Florian Angeletti, Guillaume Munch-Maccagnoni,
+   and Gabriel Scherer)
+
+- #9573: reimplement Unix.create_process and related functions without
+  Unix.fork, for better efficiency and compatibility with threads.
+  (Xavier Leroy, review by Gabriel Scherer and Anil Madhavapeddy)
+
+- #9575: Add Unix.is_inet6_addr
+  (Nicolás Ojeda Bär, review by Xavier Leroy)
+
+- #9593: Use new flag for non-elevated symbolic links and test for Developer
+  Mode on Windows
+  (Manuel Hornung, review by David Allsopp and Nicolás Ojeda Bär)
+
+* #9601: Return EPERM for EUNKNOWN -1314 in win32unix (principally affects
+  error handling when Unix.symlink is unavailable)
+  (David Allsopp, review by Xavier Leroy)
+
+### Tools:
+
+- #9606, #9635, #9637: fix performance regression in the debugger
+  (behaviors quadratic in the size of the debugged program)
+  (Xavier Leroy, report by Jacques Garrigue and Virgile Prevosto,
+  review by David Allsopp and Jacques-Henri Jourdan)
+
+### Manual and documentation:
+
+
+### Compiler user-interface and warnings:
+
+- #9560: Report partial application warnings on type errors in applications.
+  (Stephen Dolan, report and testcase by whitequark, review by Gabriel Scherer
+   and Thomas Refis)
+
+- #9583: when bytecode linking fails due to an unavailable module, the module
+  that requires it is now included in the error message.
+  (Nicolás Ojeda Bär, review by Vincent Laviron)
+
+- #9615: Attach package type attributes to core_type.
+  When parsing constraints on a first class module, attributes found after the
+  module type were parsed but ignored. Now they are attached to the
+  corresponding core_type.
+  (Etienne Millon, review by Thomas Refis)
+
+### Internal/compiler-libs changes:
+
+- #9493, #9520, #9563, #9599, #9608: refactor the pattern-matching compiler
+  (Thomas Refis and Gabriel Scherer, review by Florian Angeletti)
+
+- #9604: refactoring of the ocamltest codebase.
+  (Nicolás Ojeda Bär, review by Gabriel Scherer and Sébastien Hinderer)
+
+- #9498, #9511: make the pattern-matching analyzer more robust to
+  or-pattern explosion, by stopping after the first counter-example to
+  exhaustivity
+  (Gabriel Scherer, review by Luc Maranget, Thomas Refis and Florian Angeletti,
+   report by Alex Fedoseev through Hongbo Zhang)
+
+- #9514: optimize pattern-matching exhaustivity analysis in the single-row case
+  (Gabriel Scherer, review by Stephen DOlan)
+
+### Build system:
+
+- #9332, #9518, #9529: Cease storing C dependencies in the codebase. C
+  dependencies are generated on-the-fly in development mode. For incremental
+  compilation, the MSVC ports require GCC to be present.
+  (David Allsopp, review by Sébastien Hinderer, YAML-fu by Stephen Dolan)
+
+- #9527: stop including configuration when running 'clean' rules
+  to avoid C dependency recomputation.
+  (Gabriel Scherer, review by David Allsopp)
+
+### Bug fixes:
+
+- #9521, #9522: correctly fail when comparing functions
+  with Closure and Infix tags.
+  (Gabriel Scherer and Jeremy Yallop and Xavier Leroy,
+   report by Twitter user @st_toHKR through Jun Furuse)
+
+- #9611: maintain order of load path entries in various situations: when passing
+  them to system linker, ppx contexts, etc.
+  (Nicolás Ojeda Bär, review by Jérémie Dimino and Gabriel Scherer)
+
+- #9633: ocamltest: fix a bug when certain variables set in test scripts would
+  be ignored (eg `ocamlrunparam`).
+  (Nicolás Ojeda Bär, review by Sébastien Hinderer)
+
+OCaml 4.11
+----------
+
 (Changes that can break existing programs are marked with a "*")
 
 ### Language features
