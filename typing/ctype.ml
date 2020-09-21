@@ -68,6 +68,9 @@ exception Subtype of Subtype.t * Unification.t
 
 exception Escape of desc Errortrace.escape
 
+(* Thrown from [moregen_kind] *)
+exception Public_method_to_private_method
+
 let escape kind = {kind; context = None}
 let escape_exn kind = Escape (escape kind)
 let scope_escape_exn kind = escape_exn (Equation (short kind))
@@ -3254,6 +3257,7 @@ and moregen_fields inst_nongen type_pairs env ty1 ty2 =
 
   List.iter
     (fun (n, k1, t1, k2, t2) ->
+       (* The below call should never throw [Public_method_to_private_method] *)
        moregen_kind k1 k2;
        try moregen inst_nongen type_pairs env t1 t2 with Moregen trace ->
          raise( Moregen ( Moregen.incompatible_fields n t1 t2 :: trace ) )
@@ -3267,7 +3271,8 @@ and moregen_kind k1 k2 =
   match k1, k2 with
     (Fvar r, (Fvar _ | Fpresent))  -> set_kind r k2
   | (Fpresent, Fpresent)           -> ()
-  | _                              -> assert false
+  | (Fpresent, Fvar _)             -> raise Public_method_to_private_method
+  | (Fabsent, _) | (_, Fabsent)    -> assert false
 
 and moregen_row inst_nongen type_pairs env row1 row2 =
   let row1 = row_repr row1 and row2 = row_repr row2 in
@@ -3772,8 +3777,9 @@ let match_class_types ?(trace=true) env pat_sch subj_sch =
     let error =
       List.fold_right
         (fun (lab, k1, _t1, k2, _t2) err ->
-           try moregen_kind k1 k2; err with
-             Moregen _ -> CM_Public_method lab::err)
+           match moregen_kind k1 k2 with
+           | () -> err
+           | exception Public_method_to_private_method -> CM_Public_method lab::err)
         pairs error
     in
     let error =
