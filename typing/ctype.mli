@@ -22,6 +22,7 @@ exception Unify of Errortrace.Unification.t
 exception Equality of Errortrace.Equality.t
 exception Moregen of Errortrace.Moregen.t
 exception Subtype of Errortrace.Subtype.t * Errortrace.Unification.t
+exception Escape of Errortrace.desc Errortrace.escape
 
 exception Tags of label * label
 exception Cannot_expand
@@ -150,6 +151,7 @@ val apply:
         the parameters [pi] and returns the corresponding instance of
         [t]. Exception [Cannot_apply] is raised in case of failure. *)
 
+val try_expand_once_opt: Env.t -> type_expr -> type_expr
 val try_expand_safe_opt: Env.t -> type_expr -> type_expr
 
 val expand_head_once: Env.t -> type_expr -> type_expr

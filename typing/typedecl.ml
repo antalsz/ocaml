@@ -725,7 +725,7 @@ let check_well_founded env loc path to_check ty =
         if to_check p then Option.iter raise arg_exn
         else Btype.iter_type_expr (check ty0 TypeSet.empty) ty;
         begin try
-          let ty' = Ctype.try_expand_safe_opt env ty in
+          let ty' = Ctype.try_expand_once_opt env ty in
           let ty0 = if TypeSet.is_empty parents then ty else ty0 in
           check ty0 (TypeSet.add ty parents) ty'
         with
@@ -735,7 +735,7 @@ let check_well_founded env loc path to_check ty =
   in
   let snap = Btype.snapshot () in
   try Ctype.wrap_trace_gadt_instances env (check ty TypeSet.empty) ty
-  with Ctype.Unify _ ->
+  with Ctype.Escape _ ->
     (* Will be detected by check_recursion *)
     Btype.backtrack snap
 
