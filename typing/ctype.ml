@@ -1360,25 +1360,28 @@ let subst env level priv abbrev ty params args body =
   if List.length params <> List.length args then raise (Unify []);
   let old_level = !current_level in
   current_level := level;
-  try
-    let body0 = newvar () in          (* Stub *)
-    begin match ty with
-      None      -> ()
+  let body0 = newvar () in          (* Stub *)
+  let undo_abbrev =
+    match ty with
+    | None -> fun () -> () (* No abbreviation added *)
     | Some ({desc = Tconstr (path, tl, _)} as ty) ->
         let abbrev = proper_abbrevs path tl abbrev in
-        memorize_abbrev abbrev priv path ty body0
+        memorize_abbrev abbrev priv path ty body0;
+        fun () -> forget_abbrev abbrev path
     | _ ->
         assert false
-    end;
-    abbreviations := abbrev;
-    let (params', body') = instance_parameterized_type params body in
-    abbreviations := ref Mnil;
+  in
+  abbreviations := abbrev;
+  let (params', body') = instance_parameterized_type params body in
+  abbreviations := ref Mnil;
+  try
     !unify' env body0 body';
     List.iter2 (!unify' env) params' args;
     current_level := old_level;
     body'
   with Unify _ as exn ->
     current_level := old_level;
+    undo_abbrev ();
     raise exn
 
 (*
