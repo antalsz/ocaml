@@ -99,6 +99,7 @@ exception Cannot_apply
 type new_exn = New_exn
 
 exception Cannot_subst of new_exn
+exception Cannot_unify_universal_variables of type_expr * type_expr * new_exn
 
 (**** Type level management ****)
 
@@ -730,7 +731,7 @@ let check_scope_escape env level ty =
   try
     aux ty
   with Escape e ->
-    raise (Unify [Escape {e with context = Some ty}])
+    raise (Escape {e with context = Some ty})
 
 let update_scope scope ty =
   let ty = repr ty in
@@ -1775,9 +1776,11 @@ let local_non_recursive_abbrev env p ty =
                    (*  Polymorphic Unification  *)
                    (*****************************)
 
+(* CR aspectorzabusky: Add link_univar *)
+
 (* Since we cannot duplicate universal variables, unification must
    be done at meta-level, using bindings in univar_pairs *)
-let rec unify_univar t1 t2 = function
+let rec link_univar t1 t2 = function
     (cl1, cl2) :: rem ->
       let find_univ t cl =
         try
@@ -1791,11 +1794,18 @@ let rec unify_univar t1 t2 = function
       | Some({contents=None} as r1), Some({contents=None} as r2) ->
           set_univar r1 t2; set_univar r2 t1
       | None, None ->
-          unify_univar t1 t2 rem
+          link_univar t1 t2 rem
       | _ ->
-          raise (Unify [])
+          raise (Cannot_unify_universal_variables (t1, t2, New_exn))
       end
-  | [] -> raise (Unify [])
+  | [] -> raise (Cannot_unify_universal_variables (t1, t2, New_exn))
+
+(* The same as [link_univar], but raises [Unify] instead of
+   [Cannot_unify_universal_variables] *)
+let unify_univar t1 t2 univar_pairs =
+  try link_univar t1 t2 univar_pairs
+  with Cannot_unify_universal_variables (_, _, New_exn) -> raise (Unify [])
+(* CR aspectorzabusky: Ask Leo what adding a case to Unify/Moregen/etc. looks like *)
 
 (* Test the occurrence of free univars in a type *)
 (* that's way too expensive. Must do some kind of caching *)
@@ -3255,9 +3265,9 @@ let rec moregen inst_nongen type_pairs env t1 t2 =
                 (moregen inst_nongen type_pairs env)
           | (Tunivar _, Tunivar _) ->
               begin try
-                unify_univar t1' t2' !univar_pairs
+                link_univar t1' t2' !univar_pairs
               with
-              | Unify _ -> raise (Moregen [])
+              | Cannot_unify_universal_variables (_, _, New_exn) -> raise (Moregen [])
               end
           | (_, _) ->
               raise (Moregen [])
@@ -3327,8 +3337,8 @@ and moregen_row inst_nongen type_pairs env row1 row2 =
   begin match rm1.desc, rm2.desc with
     Tunivar _, Tunivar _ ->
       begin try
-        unify_univar rm1 rm2 !univar_pairs
-      with Unify [] -> raise (Moregen [])
+        link_univar rm1 rm2 !univar_pairs
+      with Cannot_unify_universal_variables (_, _, New_exn) -> raise (Moregen [])
       end
   | Tunivar _, _ | _, Tunivar _ ->
       raise (Moregen [])
@@ -3465,7 +3475,7 @@ let matches env ty ty' =
   cleanup_abbrev ();
   let ok =
     try unify env ty ty'; all_distinct_vars env vars
-    with Unify _ -> false
+    with Unify _ -> false (* CR aspectorzabusky: throwing away the trace *)
   in
   backtrack snap;
   ok
@@ -3557,8 +3567,8 @@ let rec eqtype rename type_pairs subst env t1 t2 =
                 (eqtype rename type_pairs subst env)
           | (Tunivar _, Tunivar _) ->
               begin try
-                unify_univar t1' t2' !univar_pairs
-                with Unify _ -> raise (Equality [])
+                link_univar t1' t2' !univar_pairs
+                with Cannot_unify_universal_variables (_, _, New_exn) -> raise (Equality [])
               end
           | (_, _) ->
               raise (Equality [])
@@ -4063,10 +4073,10 @@ let rec build_subtype env visited loops posi level t =
         Tobject _ when posi && not (opened_object t') ->
           let cl_abbr, body = find_cltype_for_path env p in
           let ty =
-            (* CR aspectorzabusky: Can now raise [Cannot_subst] instead of being able to
-               raise [Unify] *)
-            subst env !current_level Public abbrev None
-              cl_abbr.type_params tl body in
+            try
+              subst env !current_level Public abbrev None
+                cl_abbr.type_params tl body
+            with Cannot_subst New_exn -> assert false in
           let ty = repr ty in
           let ty1, tl1 =
             match ty.desc with
@@ -4089,6 +4099,7 @@ let rec build_subtype env visited loops posi level t =
             if c > Equiv || deep_occur ty ty1' then None else Some(p,tl1) in
           t''.desc <- Tobject (ty1', ref nm);
           (try unify_var env ty t with Unify _ -> assert false);
+            (* CR aspectorzabusky: Is the above call to [unify_var] needed? *)
           (t'', Changed)
       | _ -> raise Not_found
       with Not_found ->
@@ -4303,12 +4314,10 @@ let rec subtype_rec env trace t1 t2 cstrs =
           else begin
             (* need to check module subtyping *)
             let snap = Btype.snapshot () in
-            try
-              List.iter (fun (_, t1, t2, _) -> unify env t1 t2) cstrs';
-              if !package_subtype env p1 nl1 tl1 p2 nl2 tl2
-              then (Btype.backtrack snap; cstrs' @ cstrs)
-              else raise (Subtype ([], []))
-            with Unify _ | Subtype _ ->
+            match List.iter (fun (_, t1, t2, _) -> unify env t1 t2) cstrs' with
+            | () when !package_subtype env p1 nl1 tl1 p2 nl2 tl2 ->
+              Btype.backtrack snap; cstrs' @ cstrs
+            | () | exception Unify _ ->
               Btype.backtrack snap; raise Not_found
           end
         with Not_found ->

@@ -1005,8 +1005,8 @@ exception Need_backtrack
 
 let check_scope_escape loc env level ty =
   try Ctype.check_scope_escape env level ty
-  with Unify trace ->
-    raise(Error(loc, env, Pattern_type_clash(trace, None)))
+  with Escape trace ->
+    raise(Error(loc, env, Pattern_type_clash([Escape trace], None)))
 
 (* type_pat propagates the expected type as well as maps for
    constructors and labels.
