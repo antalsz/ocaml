@@ -94,6 +94,12 @@ exception Cannot_expand
 
 exception Cannot_apply
 
+(**** CR aspectorzabusky: Just added; review these ****)
+
+type new_exn = New_exn
+
+exception Cannot_subst of new_exn
+
 (**** Type level management ****)
 
 let current_level = ref 0
@@ -1356,8 +1362,9 @@ let instance_label fixed lbl =
 let unify' = (* Forward declaration *)
   ref (fun _env _ty1 _ty2 -> raise (Unify []))
 
+
 let subst env level priv abbrev ty params args body =
-  if List.length params <> List.length args then raise (Unify []);
+  if List.length params <> List.length args then raise (Cannot_subst New_exn);
   let old_level = !current_level in
   current_level := level;
   let body0 = newvar () in          (* Stub *)
@@ -1379,10 +1386,10 @@ let subst env level priv abbrev ty params args body =
     List.iter2 (!unify' env) params' args;
     current_level := old_level;
     body'
-  with Unify _ as exn ->
+  with Unify _ ->
     current_level := old_level;
     undo_abbrev ();
-    raise exn
+    raise (Cannot_subst New_exn)
 
 (*
    Only the shape of the type matters, not whether it is generic or
@@ -1394,7 +1401,7 @@ let apply env params body args =
   try
     subst env generic_level Public (ref Mnil) None params args body
   with
-    Unify _ -> raise Cannot_apply
+    Cannot_subst New_exn -> raise Cannot_apply
 
 let () = Subst.ctype_apply_env_empty := apply Env.empty
 
@@ -1436,6 +1443,12 @@ let check_abbrev_env env =
    4. The expansion requires the expansion of another abbreviation,
       and this other expansion fails.
 *)
+(* CR aspectorzabusky: Start here.  Functions from here down can raise [Escape], but only
+   [expand_head_unif] should raise [Unify].  Some of these should never raise *period*,
+   some of these should raise [Escape].
+
+   Real goals: [subtype], [moregen], and [eqtype] are the REAL targets for replacing
+   [Unify] with [Escape]. *)
 let expand_abbrev_gen kind find_type_expansion env ty =
   check_abbrev_env env;
   match ty with
@@ -1466,6 +1479,7 @@ let expand_abbrev_gen kind find_type_expansion env ty =
           (* assert (ty != ty'); *) (* PR#7324 *)
           ty'
       | None ->
+          (* CR aspectorzabusky: Look here *)
           match find_type_expansion path env with
           | exception Not_found ->
             (* another way to expand is to normalize the path itself *)
@@ -1476,9 +1490,10 @@ let expand_abbrev_gen kind find_type_expansion env ty =
             (* prerr_endline
               ("add a "^string_of_kind kind^" expansion for "^Path.name path);*)
             let ty' =
+              (* CR aspectorzabusky: here *)
               try
                 subst env level kind abbrev (Some ty) params args body
-              with Unify _ -> raise (escape_exn Constraint)
+              with Cannot_subst New_exn -> raise (escape_exn Constraint)
             in
             (* For gadts, remember type as non exportable *)
             (* The ambiguous level registered for ty' should be the highest *)
@@ -1598,14 +1613,18 @@ let try_expand_safe_opt env ty =
 let expand_head_opt env ty =
   try try_expand_head try_expand_safe_opt env ty with Cannot_expand -> repr ty
 
+(* CR aspectorzabusky: Through here.  Probably. *)
+
 (* Make sure that the type parameters of the type constructor [ty]
    respect the type constraints *)
+(* Stephen deleted this function *)
 let enforce_constraints env ty =
   match ty with
     {desc = Tconstr (path, args, _abbrev); level = level} ->
       begin try
         let decl = Env.find_type path env in
         ignore
+          (* This call to [subst] is gone in the future *)
           (subst env level Public (ref Mnil) None decl.type_params args
              (newvar2 level))
       with Not_found -> ()
@@ -2108,6 +2127,11 @@ let rec expands_to_datatype env ty =
       with Not_found | Cannot_expand -> false
       end
   | _ -> false
+
+(* [mcomp] tests if two types are "compatible" -- i.e., if they could ever unify.  (This
+   is distinct from [eqtype], which checks if two types *are* exactly the same.)  This is
+   used to decide whether GADT cases are unreachable.  It is broadly part of
+   unification. *)
 
 (* mcomp type_pairs subst env t1 t2 does not raise an
    exception if it is possible that t1 and t2 are actually
@@ -4039,6 +4063,8 @@ let rec build_subtype env visited loops posi level t =
         Tobject _ when posi && not (opened_object t') ->
           let cl_abbr, body = find_cltype_for_path env p in
           let ty =
+            (* CR aspectorzabusky: Can now raise [Cannot_subst] instead of being able to
+               raise [Unify] *)
             subst env !current_level Public abbrev None
               cl_abbr.type_params tl body in
           let ty = repr ty in
