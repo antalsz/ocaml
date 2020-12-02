@@ -82,8 +82,6 @@ module type Trace = sig
 
   val diff : type_expr -> type_expr -> desc elt
 
-  val debug_note : __LOC__:string -> string -> 'a elt
-
   (** [flatten f trace] flattens all elements of type {!desc} in
       [trace] to either [f x.t expanded] if [x.expanded=Some expanded]
       or [f x.t x.t] otherwise *)
@@ -125,10 +123,6 @@ module Make_trace (Info : Trace_info)
   type t = desc elt list
 
   let diff got expected = Diff (map_diff short { got; expected })
-
-  (* CR aspectorzabusky: Preserve this? *)
-  (* let debug_note ~__LOC__:loc msg = Note (Format.sprintf "[DEBUG] %s: %s" loc msg) *)
-  let debug_note ~__LOC__ _msg = failwith "debug_note"
 
   let map_elt f = function
     | Diff x -> Diff (map_diff f x)

@@ -65,8 +65,6 @@ module type Trace = sig
 
   val diff : type_expr -> type_expr -> desc elt
 
-  val debug_note : __LOC__:string -> string -> 'a elt
-
   (** [flatten f trace] flattens all elements of type {!desc} in
       [trace] to either [f x.t expanded] if [x.expanded=Some expanded]
       or [f x.t x.t] otherwise *)

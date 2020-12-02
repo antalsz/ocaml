@@ -1923,7 +1923,7 @@ let enter_poly_unif env univar_pairs t1 tl1 t2 tl2 f =
 let enter_poly_moregen env univar_pairs t1 tl1 t2 tl2 f =
   try
     enter_poly env univar_pairs t1 tl1 t2 tl2 f
-  with Escape e -> raise (Moregen [Escape e; Moregen.debug_note ~__LOC__ "enter_poly_moregen"])
+  with Escape e -> raise (Moregen [Escape e])
 
 let enter_poly_eql env univar_pairs t1 tl1 t2 tl2 f =
   try
@@ -3164,12 +3164,12 @@ let filter_self_method env lab priv meths ty =
 let moregen_update_scope scope ty =
   try
     update_scope scope ty
-  with Escape e -> raise (Moregen [Escape e; Moregen.debug_note ~__LOC__ "moregen_update_scope"])
+  with Escape e -> raise (Moregen [Escape e])
 
 let occur_for_moregen env t1 t2 =
   try
     occur env t1 t2
-  with Occur -> raise (Moregen [Info (Rec_occur(t1, t2)); Moregen.debug_note ~__LOC__ "occur_for_moregen"])
+  with Occur -> raise (Moregen [Info (Rec_occur(t1, t2))])
 
 (*
    Update the level of [ty]. First check that the levels of generic
@@ -3191,13 +3191,13 @@ let moregen_occur env level ty =
   begin try
     occur ty; unmark_type ty
   with Occur ->
-    unmark_type ty; raise (Moregen [Moregen.debug_note ~__LOC__ "moregen_occur Occur"])
+    unmark_type ty; raise (Moregen [])
   end;
   (* also check for free univars *)
   try
     occur_univar env ty;
     update_level env level ty
-  with Escape e -> raise (Moregen [Escape e; Moregen.debug_note ~__LOC__ "moregen_occur Escape"])
+  with Escape e -> raise (Moregen [Escape e])
 
 let may_instantiate inst_nongen t1 =
   if inst_nongen then t1.level <> generic_level - 1
@@ -3245,10 +3245,10 @@ let rec moregen inst_nongen type_pairs env t1 t2 =
               begin try
                 unify_package env (moregen_list inst_nongen type_pairs env)
                   t1'.level p1 n1 tl1 t2'.level p2 n2 tl2
-              with Not_found -> raise (Moregen [Moregen.debug_note ~__LOC__ "moregen Tpackage/Tpackage"])
+              with Not_found -> raise (Moregen [])
               end
-          | (Tnil,  Tconstr _ ) -> raise (Moregen [Obj(Abstract_row Second); Moregen.debug_note ~__LOC__ "moregen Tnil/TConstr"])
-          | (Tconstr _,  Tnil ) -> raise (Moregen [Obj(Abstract_row First); Moregen.debug_note ~__LOC__ "moregen Tconstr/Tnil"])
+          | (Tnil,  Tconstr _ ) -> raise (Moregen [Obj(Abstract_row Second)])
+          | (Tconstr _,  Tnil ) -> raise (Moregen [Obj(Abstract_row First)])
           | (Tvariant row1, Tvariant row2) ->
               moregen_row inst_nongen type_pairs env row1 row2
           | (Tobject (fi1, _nm1), Tobject (fi2, _nm2)) ->
@@ -3267,17 +3267,17 @@ let rec moregen inst_nongen type_pairs env t1 t2 =
                 link_univar t1' t2' !univar_pairs
               with
               | Cannot_unify_universal_variables (_, _, New_exn) ->
-                raise (Moregen [Moregen.debug_note ~__LOC__ "moregen Cannot_unify_universal_variables"])
+                raise (Moregen [])
               end
           | (_, _) ->
-              raise (Moregen [Moregen.debug_note ~__LOC__ "moregen catch-all"])
+              raise (Moregen [])
         end
-  with Moregen trace -> raise ( Moregen ( Moregen.diff t1 t2 :: Moregen.debug_note ~__LOC__ "moregen" :: trace ) );
+  with Moregen trace -> raise ( Moregen ( Moregen.diff t1 t2 :: trace ) );
 
 
 and moregen_list inst_nongen type_pairs env tl1 tl2 =
   if List.length tl1 <> List.length tl2 then
-    raise (Moregen [Moregen.debug_note ~__LOC__ "moregen_list"]);
+    raise (Moregen []);
   List.iter2 (moregen inst_nongen type_pairs env) tl1 tl2
 
 and moregen_fields inst_nongen type_pairs env ty1 ty2 =
@@ -3286,7 +3286,7 @@ and moregen_fields inst_nongen type_pairs env ty1 ty2 =
   let (pairs, miss1, miss2) = associate_fields fields1 fields2 in
   begin
     match miss1 with
-    | (n, _, _) :: _ -> raise (Moregen [Obj (Missing_field (Second, n)); Moregen.debug_note ~__LOC__ "moregen_fields Missing_field"])
+    | (n, _, _) :: _ -> raise (Moregen [Obj (Missing_field (Second, n))])
     | [] -> ()
   end;
   moregen inst_nongen type_pairs env rest1
@@ -3297,7 +3297,7 @@ and moregen_fields inst_nongen type_pairs env ty1 ty2 =
        (* The below call should never throw [Public_method_to_private_method] *)
        moregen_kind k1 k2;
        try moregen inst_nongen type_pairs env t1 t2 with Moregen trace ->
-         raise( Moregen ( Moregen.incompatible_fields n t1 t2 :: Moregen.debug_note ~__LOC__ "moregen_fields incompatible_fields" :: trace ) )
+         raise( Moregen ( Moregen.incompatible_fields n t1 t2 :: trace ) )
     )
     pairs
 
@@ -3326,22 +3326,22 @@ and moregen_row inst_nongen type_pairs env row1 row2 =
   begin
     match r1 with
     | [] -> ()
-    | (lb, _) :: _ -> raise (Moregen [Variant (Vinfo (Missing (Second, lb))); Moregen.debug_note ~__LOC__ "moregen_row missing(2nd)"])
+    | (lb, _) :: _ -> raise (Moregen [Variant (Vinfo (Missing (Second, lb)))])
   end;
   if row1.row_closed then begin
     match row2.row_closed, r2 with
-    | false, _ -> raise (Moregen [Variant (Vinfo Openness); Moregen.debug_note ~__LOC__ "moregen_row openness"])
-    | _, ((lb, _) :: _) -> raise (Moregen [Variant (Vinfo (Missing (First, lb))); Moregen.debug_note ~__LOC__ "moregen_row missing(1st)"])
+    | false, _ -> raise (Moregen [Variant (Vinfo Openness)])
+    | _, ((lb, _) :: _) -> raise (Moregen [Variant (Vinfo (Missing (First, lb)))])
     | _, _ -> ()
   end;
   begin match rm1.desc, rm2.desc with
     Tunivar _, Tunivar _ ->
       begin try
         link_univar rm1 rm2 !univar_pairs
-      with Cannot_unify_universal_variables (_, _, New_exn) -> raise (Moregen [Moregen.debug_note ~__LOC__ "moregen_row Cannot_unify_universal_variables"])
+      with Cannot_unify_universal_variables (_, _, New_exn) -> raise (Moregen [])
       end
   | Tunivar _, _ | _, Tunivar _ ->
-      raise (Moregen [Moregen.debug_note ~__LOC__ "moregen_row Tunivar/_|_/Tunivar"])
+      raise (Moregen [])
   | _ when static_row row1 -> ()
   | _ when may_inst ->
       let ext =
@@ -3352,7 +3352,7 @@ and moregen_row inst_nongen type_pairs env row1 row2 =
       link_type rm1 ext
   | Tconstr _, Tconstr _ ->
       moregen inst_nongen type_pairs env rm1 rm2
-  | _ -> raise (Moregen [Moregen.debug_note ~__LOC__ "moregen_row Tconstr/Tconstr"])
+  | _ -> raise (Moregen [])
   end;
   List.iter
     (fun (l,f1,f2) ->
@@ -3368,7 +3368,7 @@ and moregen_row inst_nongen type_pairs env row1 row2 =
              List.iter (fun t1 -> moregen inst_nongen type_pairs env t1 t2) tl1
          | Reither(c1, tl1, _, e1), Reither(c2, tl2, m2, e2) ->
              if e1 != e2 then begin
-               if c1 && not c2 then raise(Moregen [Moregen.debug_note ~__LOC__ "moregen_row iter Reither/Reither mismatch"]);
+               if c1 && not c2 then raise(Moregen []);
                set_row_field e1 (Reither (c2, [], m2, e2));
                if List.length tl1 = List.length tl2 then
                  List.iter2 (moregen inst_nongen type_pairs env) tl1 tl2
@@ -3377,18 +3377,18 @@ and moregen_row inst_nongen type_pairs env row1 row2 =
                      List.iter
                        (fun t1 -> moregen inst_nongen type_pairs env t1 t2)
                        tl1
-                 | [] -> if tl1 <> [] then raise (Moregen [Moregen.debug_note ~__LOC__ "moregen_row iter Reither/Reither bad"])
+                 | [] -> if tl1 <> [] then raise (Moregen [])
              end
          | Reither(true, [], _, e1), Rpresent None when may_inst ->
              set_row_field e1 f2
          | Reither(_, _, _, e1), Rabsent when may_inst -> set_row_field e1 f2
          | Rabsent, Rabsent -> ()
-         | Rpresent (Some _), Rpresent None -> raise (Moregen [Moregen.debug_note ~__LOC__ "moregen_row iter Rpresent(Some)/Rpresent(None)"])
-         | Rpresent None, Rpresent (Some _) -> raise (Moregen [Moregen.debug_note ~__LOC__ "moregen_row iter Rpresent(None)/Rpresent(Some)"])
-         | Rpresent _, Reither _ -> raise (Moregen [Moregen.debug_note ~__LOC__ "moregen_row iter Rpresent/Reither"])
-         | _ -> raise (Moregen [Moregen.debug_note ~__LOC__ "moregen_row iter catch-all"])
+         | Rpresent (Some _), Rpresent None -> raise (Moregen [])
+         | Rpresent None, Rpresent (Some _) -> raise (Moregen [])
+         | Rpresent _, Reither _ -> raise (Moregen [])
+         | _ -> raise (Moregen [])
        with Moregen err ->
-         raise (Moregen (Variant (Incompatible_types_for l) :: Moregen.debug_note ~__LOC__ "moregen_row iter" :: err)))
+         raise (Moregen (Variant (Incompatible_types_for l) :: err)))
     pairs
 
 (* Must empty univar_pairs first *)
