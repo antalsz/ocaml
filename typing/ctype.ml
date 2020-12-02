@@ -2713,7 +2713,7 @@ and unify3 env t1 t1' t2 t2' =
               else unify env (newty2 rem.level Tnil) rem
           | _      ->
               if f = dummy_method then
-                raise (Unify [Obj (Info Self_cannot_be_closed)])
+                raise (Unify [Obj (Oinfo Self_cannot_be_closed)])
               else if d1 = Tnil then
                 raise (Unify [Obj(Missing_field (First, f))])
               else
@@ -2854,7 +2854,7 @@ and unify_row env row1 row2 =
       (fun (_,f1,f2) ->
         row_field_repr f1 = Rabsent || row_field_repr f2 = Rabsent)
       pairs
-  then raise ( Unify [Variant (Info No_intersection)] );
+  then raise ( Unify [Variant (Vinfo No_intersection)] );
   let name =
     if row1.row_name <> None && (row1.row_closed || empty r2) &&
       (not row2.row_closed || keep (fun f1 f2 -> f1, f2) && empty r1)
@@ -2875,14 +2875,14 @@ and unify_row env row1 row2 =
       | None ->
           if rest <> [] && row.row_closed then
             let pos = if row == row1 then First else Second in
-            raise (Unify [Variant (Info (No_tags(pos,rest)))])
+            raise (Unify [Variant (Vinfo (No_tags(pos,rest)))])
       | Some fixed ->
           let pos = if row == row1 then First else Second in
           if closed && not row.row_closed then
-            raise (Unify [Variant(Info (Fixed_row(pos,Cannot_be_closed,fixed)))])
+            raise (Unify [Variant(Vinfo (Fixed_row(pos,Cannot_be_closed,fixed)))])
           else if rest <> [] then
             let case = Unification.Cannot_add_tags (List.map fst rest) in
-            raise (Unify [Variant(Info (Fixed_row(pos,case,fixed)))])
+            raise (Unify [Variant(Vinfo (Fixed_row(pos,case,fixed)))])
     end;
     (* The following test is not principal... should rather use Tnil *)
     let rm = row_more row in
@@ -2923,7 +2923,7 @@ and unify_row_field env fixed1 fixed2 more l f1 f2 =
     match fixed with
     | None -> f ()
     | Some fix ->
-        let tr = [Unification.Variant(Info(Fixed_row(pos,Cannot_add_tags [l],fix)))] in
+        let tr = [Unification.Variant(Vinfo(Fixed_row(pos,Cannot_add_tags [l],fix)))] in
         raise (Unify tr) in
   let first = First, fixed1 and second = Second, fixed2 in
   let either_fixed = match fixed1, fixed2 with
@@ -3326,12 +3326,12 @@ and moregen_row inst_nongen type_pairs env row1 row2 =
   begin
     match r1 with
     | [] -> ()
-    | (lb, _) :: _ -> raise (Moregen [Variant (Info (Missing (Second, lb))); Moregen.debug_note ~__LOC__ "moregen_row missing(2nd)"])
+    | (lb, _) :: _ -> raise (Moregen [Variant (Vinfo (Missing (Second, lb))); Moregen.debug_note ~__LOC__ "moregen_row missing(2nd)"])
   end;
   if row1.row_closed then begin
     match row2.row_closed, r2 with
-    | false, _ -> raise (Moregen [Variant (Info Openness); Moregen.debug_note ~__LOC__ "moregen_row openness"])
-    | _, ((lb, _) :: _) -> raise (Moregen [Variant (Info (Missing (First, lb))); Moregen.debug_note ~__LOC__ "moregen_row missing(1st)"])
+    | false, _ -> raise (Moregen [Variant (Vinfo Openness); Moregen.debug_note ~__LOC__ "moregen_row openness"])
+    | _, ((lb, _) :: _) -> raise (Moregen [Variant (Vinfo (Missing (First, lb))); Moregen.debug_note ~__LOC__ "moregen_row missing(1st)"])
     | _, _ -> ()
   end;
   begin match rm1.desc, rm2.desc with
@@ -3624,23 +3624,23 @@ and eqtype_row rename type_pairs subst env row1 row2 =
   let row1 = row_repr row1 and row2 = row_repr row2 in
   let r1, r2, pairs = merge_row_fields row1.row_fields row2.row_fields in
   if row1.row_closed <> row2.row_closed
-  then raise (Equality [Variant (Info (Openness (
+  then raise (Equality [Variant (Vinfo (Openness (
     if row2.row_closed then First else Second)))]);
   if not row1.row_closed then begin
     match r1, r2 with
-    | (lb1, _)::_, _ -> raise (Equality [Variant (Info (Missing (Second, lb1)))])
-    | _, (lb2, _)::_ -> raise (Equality [Variant (Info (Missing (First, lb2)))])
+    | (lb1, _)::_, _ -> raise (Equality [Variant (Vinfo (Missing (Second, lb1)))])
+    | _, (lb2, _)::_ -> raise (Equality [Variant (Vinfo (Missing (First, lb2)))])
     | _, _ -> ()
   end;
   begin
     match filter_row_fields false r1 with
     | [] -> ();
-    | (lb, _) :: _ -> raise (Equality [Variant (Info (Missing (Second, lb)))])
+    | (lb, _) :: _ -> raise (Equality [Variant (Vinfo (Missing (Second, lb)))])
   end;
   begin
     match filter_row_fields false r2 with
     | [] -> ()
-    | (lb, _) :: _ -> raise (Equality [Variant (Info (Missing (First, lb)))])
+    | (lb, _) :: _ -> raise (Equality [Variant (Vinfo (Missing (First, lb)))])
   end;
   if not (static_row row1) then
     eqtype rename type_pairs subst env row1.row_more row2.row_more;

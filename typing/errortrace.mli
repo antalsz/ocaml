@@ -2,6 +2,9 @@ open Types
 
 type position = First | Second
 
+val swap_position : position -> position
+val print_pos : Format.formatter -> position -> unit
+
 type desc = { t: type_expr; expanded: type_expr option }
 type 'a diff = { got: 'a; expected: 'a}
 
@@ -31,6 +34,9 @@ val explain: 'a list ->
 
 type no_info = |
 
+(* [function _ -> .], but doesn't rely on type inference *)
+val has_no_info : no_info -> _
+
 type rec_occur = Rec_occur of type_expr * type_expr
 
 module type Trace = sig
@@ -40,12 +46,12 @@ module type Trace = sig
 
   type variant =
     | Incompatible_types_for of string
-    | Info of variant_info
+    | Vinfo of variant_info
 
   type obj =
     | Missing_field of position * string
     | Abstract_row of position
-    | Info of obj_info
+    | Oinfo of obj_info
 
   type 'a elt =
     | Diff of 'a diff
@@ -53,7 +59,6 @@ module type Trace = sig
     | Obj of obj
     | Escape of 'a escape
     | Incompatible_fields of { name:string; diff: type_expr diff }
-    | Note of string
     | Info of elt_info
 
   type t = desc elt list
@@ -83,14 +88,11 @@ module Unification : sig
     | No_tags of position * (Asttypes.label * row_field) list
     | Fixed_row of position * fixed_row_case * fixed_explanation
 
-  type self_cannot_be_closed = Self_cannot_be_closed
-
-  type nonrec rec_occur = rec_occur = Rec_occur of type_expr * type_expr
-  (* CR aspectorzabusky: Shared with [Moregen] *)
+  type obj_info = Self_cannot_be_closed
 
   include Trace with type variant_info := variant_info
-                 and type obj_info := self_cannot_be_closed
-                 and type elt_info := rec_occur
+                 and type obj_info := obj_info
+                 and type elt_info = rec_occur
 
   (** Switch [expected] and [got] *)
   val swap : t -> t
@@ -104,8 +106,8 @@ module Equality : sig
        arguments instead of 1 *)
 
   include Trace with type variant_info := variant_info
-                 and type obj_info := no_info
-                 and type elt_info := no_info
+                 and type obj_info = no_info
+                 and type elt_info = no_info
 end
 
 module Moregen : sig
@@ -115,12 +117,9 @@ module Moregen : sig
     (* [Missing] is shared with [Equality.variant_info], but [Equality.Openness] takes 1
        argument instead of 0 *)
 
-  type nonrec rec_occur = rec_occur = Rec_occur of type_expr * type_expr
-  (* CR aspectorzabusky: Shared with [Unification] *)
-
   include Trace with type variant_info := variant_info
-                 and type obj_info := no_info
-                 and type elt_info := rec_occur
+                 and type obj_info = no_info
+                 and type elt_info = rec_occur
 end
 
 module Subtype : sig
@@ -135,4 +134,3 @@ module Subtype : sig
 
   val flatten : (type_expr -> type_expr -> 'a) -> t -> 'a elt list
 end
-
