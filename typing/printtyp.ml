@@ -1992,7 +1992,7 @@ module Explain_trace (T : Errortrace.Trace) (Config : Explain_config with module
     | _ -> Keep
 
   let prepare_trace f tr =
-    prepare_trace (fun _ -> false) printing_status (T.flatten f tr)
+    prepare_trace Config.drop printing_status (T.flatten f tr)
 
   (** Keep elements that are not [Diff _ ] and take the decision
       for the last element, require a prepared trace *)
