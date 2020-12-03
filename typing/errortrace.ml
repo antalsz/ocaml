@@ -220,5 +220,4 @@ module Subtype = struct
   let map f t = List.map (map_elt f) t
 
   let flatten f t = map (flatten_desc f) t
-
 end
