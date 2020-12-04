@@ -1,4 +1,5 @@
 open Types
+open Format
 
 type position = First | Second
 
@@ -6,9 +7,9 @@ let swap_position = function
   | First -> Second
   | Second -> First
 
-let print_pos ppf = function (* CR aspectorzabusky: Moved from printtyp.ml; is this the right place for it? *)
-  | First -> Format.fprintf ppf "first"
-  | Second -> Format.fprintf ppf "second"
+let print_pos ppf = function
+  | First -> fprintf ppf "first"
+  | Second -> fprintf ppf "second"
 
 type desc = { t: type_expr; expanded: type_expr option }
 type 'a diff = { got: 'a; expected: 'a}
@@ -52,14 +53,45 @@ let explain trace f =
 
 type no_info = |
 
-let has_no_info = function | (_ : no_info) -> .
-
 type rec_occur = Rec_occur of type_expr * type_expr
 
-module type Trace = sig
+type printing_status =
+  | Discard
+  | Keep
+  | Optional_refinement
+  (** An [Optional_refinement] printing status is attributed to trace
+      elements that are focusing on a new subpart of a structural type.
+      Since the whole type should have been printed earlier in the trace,
+      we only print those elements if they are the last printed element
+      of a trace, and there is no explicit explanation for the
+      type error.
+  *)
+
+type type_printers = {
+  mark_loops : type_expr -> unit;
+  type_expr  : Format.formatter -> type_expr -> unit;
+  path       : Format.formatter -> Path.t -> unit
+}
+
+let explain_no_info _ = function | (_ : no_info) -> .
+
+let explain_rec_occur type_printers = function
+  | Rec_occur(x,y) ->
+    type_printers.mark_loops y;
+    Some(dprintf "@,@[<hov>The type variable %a occurs inside@ %a@]"
+           type_printers.type_expr x type_printers.type_expr y)
+
+module type Trace_info_types = sig
   type variant_info
   type obj_info
   type elt_info
+end
+
+module type Trace_core = sig
+  (* Distinct for every trace *)
+  include Trace_info_types
+
+  (* Uniform for every trace *)
 
   type variant =
     | Incompatible_types_for of string
@@ -82,27 +114,36 @@ module type Trace = sig
 
   val diff : type_expr -> type_expr -> desc elt
 
-  (** [flatten f trace] flattens all elements of type {!desc} in
-      [trace] to either [f x.t expanded] if [x.expanded=Some expanded]
-      or [f x.t x.t] otherwise *)
   val flatten: (type_expr -> type_expr -> 'a) -> t -> 'a elt list
 
-  (* CR aspectorzabusky: Could be polymorphic (['a -> 'b]) *)
   val map : (desc -> desc) -> desc elt list -> desc elt list
 
   val incompatible_fields : string -> type_expr -> type_expr -> desc elt
 end
 
-module type Trace_info = sig
-  type variant_info
-  type obj_info
-  type elt_info
+module type Trace = sig
+  include Trace_core
+
+  (* Also distinct for every type *)
+
+  val incompatibility_phrase : string
+
+  val constraint_escape_status : printing_status
+  val drop_from_trace : (Types.type_expr * 'a) elt -> bool
+  val explain_contextless_escaped_field_mismatch : bool
+
+  val explain_variant_info :
+    type_printers -> variant_info -> (Format.formatter -> unit) option
+  val explain_obj_info :
+    type_printers -> obj_info -> (Format.formatter -> unit) option
+  val explain_elt_info :
+    type_printers -> elt_info -> (Format.formatter -> unit) option
 end
 
-module Make_trace (Info : Trace_info)
-  : Trace with type variant_info := Info.variant_info
-           and type obj_info := Info.obj_info
-           and type elt_info := Info.elt_info
+module Make_trace_core (Info : Trace_info_types)
+  : Trace_core with type variant_info := Info.variant_info
+                and type obj_info := Info.obj_info
+                and type elt_info := Info.elt_info
 = struct
   type variant =
     | Incompatible_types_for of string
@@ -158,7 +199,9 @@ module Unification = struct
   end
 
   include Info
-  include Make_trace (Info)
+  include Make_trace_core (Info)
+
+  (* Extra non-printing functionality *)
 
   (* Permute the expected and actual values *)
   let swap_elt = function
@@ -174,6 +217,58 @@ module Unification = struct
     | x -> x
 
   let swap e = List.map swap_elt e
+
+  (* Printing configuration *)
+
+  let incompatibility_phrase = "is not compatible with type"
+
+  let constraint_escape_status = Discard
+  let drop_from_trace _ = false
+  let explain_contextless_escaped_field_mismatch = true
+
+  let print_tag ppf = fprintf ppf "`%s"
+
+  let print_tags =
+    let comma ppf () = fprintf ppf ",@ " in
+    pp_print_list ~pp_sep:comma print_tag
+
+  let explain_fixed_row type_printers pos expl = match expl with
+    | Types.Fixed_private ->
+      dprintf "The %a variant type is private" print_pos pos
+    | Types.Univar x ->
+      dprintf "The %a variant type is bound to the universal type variable %a"
+        print_pos pos type_printers.type_expr x
+    | Types.Reified p ->
+      dprintf "The %a variant type is bound to %a" print_pos pos type_printers.path p
+    | Types.Rigid -> ignore
+
+  let explain_fixed_row_case ppf = function
+    | Cannot_be_closed -> fprintf ppf "it cannot be closed"
+    | Cannot_add_tags tags -> fprintf ppf "it may not allow the tag(s) %a" print_tags tags
+
+  let explain_variant_info type_printers = function
+    | No_intersection ->
+      Some(dprintf "@,These two variant types have no intersection")
+    | No_tags(pos,fields) -> Some(
+      dprintf
+        "@,@[The %a variant type does not allow tag(s)@ @[<hov>%a@]@]"
+        print_pos pos
+        print_tags (List.map fst fields)
+    )
+    | Fixed_row (pos, k, (Univar _ | Reified _ | Fixed_private as e)) ->
+      Some (
+        dprintf "@,@[%t,@ %a@]" (explain_fixed_row type_printers pos e)
+          explain_fixed_row_case k
+      )
+    | Fixed_row (_,_, Rigid) ->
+      (* this case never happens *)
+      None
+
+  let explain_obj_info _type_printers = function
+    | Self_cannot_be_closed ->
+      Some (dprintf "@,Self type cannot be unified with a closed object type")
+
+  let explain_elt_info = explain_rec_occur
 end
 
 module Equality = struct
@@ -188,7 +283,27 @@ module Equality = struct
   end
 
   include Info
-  include Make_trace (Info)
+  include Make_trace_core (Info)
+
+  let incompatibility_phrase = "is not equal to type"
+
+  let constraint_escape_status = Discard
+  let drop_from_trace = function
+    | Diff {got = ({desc = Tpoly _}, _); expected = ({desc = Tpoly _}, _)} -> true
+    | _ -> false
+  let explain_contextless_escaped_field_mismatch = true
+
+  let explain_variant_info _type_printers = function
+    | Openness ord ->
+        Some(dprintf "@,The %a is open and the %a is not"
+               print_pos ord
+               print_pos (swap_position ord))
+    | Missing (ord, l) ->
+        Some(dprintf "@,The %a declaration has no tag `%s" print_pos ord l)
+
+  let explain_obj_info = explain_no_info
+
+  let explain_elt_info = explain_no_info
 end
 
 module Moregen = struct
@@ -203,7 +318,23 @@ module Moregen = struct
   end
 
   include Info
-  include Make_trace (Info)
+  include Make_trace_core (Info)
+
+  let incompatibility_phrase = "is not compatible with type"
+
+  let constraint_escape_status = Keep
+  let drop_from_trace _ = false
+  let explain_contextless_escaped_field_mismatch = false
+
+  let explain_variant_info _type_printers = function
+    | Missing (pos, f) ->
+        Some(dprintf "@,@[The %a object type has no method %s@]" print_pos pos f)
+    | Openness ->
+        Some (dprintf "@,@[The second object is open and the first is not@]")
+
+  let explain_obj_info = explain_no_info
+
+  let explain_elt_info = explain_rec_occur
 end
 
 module Subtype = struct
@@ -221,3 +352,4 @@ module Subtype = struct
 
   let flatten f t = map (flatten_desc f) t
 end
+

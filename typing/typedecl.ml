@@ -1668,11 +1668,11 @@ let report_error ppf = function
         !Oprint.out_type (Printtyp.tree_of_typexp false ty')
   | Inconsistent_constraint (env, trace) ->
       fprintf ppf "The type constraints are not consistent.@.";
-      Printtyp.report_unification_error ppf env trace
+      Printtyp.Unification.report_error ppf env trace
         (fun ppf -> fprintf ppf "Type")
         (fun ppf -> fprintf ppf "is not compatible with type")
   | Type_clash (env, trace) ->
-      Printtyp.report_unification_error ppf env trace
+      Printtyp.Unification.report_error ppf env trace
         (function ppf ->
            fprintf ppf "This type constructor expands to type")
         (function ppf ->
@@ -1724,7 +1724,7 @@ let report_error ppf = function
            "the type" "this extension" "definition")
         err
   | Rebind_wrong_type (lid, env, trace) ->
-      Printtyp.report_unification_error ppf env trace
+      Printtyp.Unification.report_error ppf env trace
         (function ppf ->
           fprintf ppf "The constructor %a@ has type"
             Printtyp.longident lid)

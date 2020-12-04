@@ -34,10 +34,32 @@ val explain: 'a list ->
 
 type no_info = |
 
-(* [function _ -> .], but doesn't rely on type inference *)
-val has_no_info : no_info -> _
-
 type rec_occur = Rec_occur of type_expr * type_expr
+
+(* Used when printing traces *)
+type printing_status =
+  | Discard
+  | Keep
+  | Optional_refinement
+  (** An [Optional_refinement] printing status is attributed to trace
+      elements that are focusing on a new subpart of a structural type.
+      Since the whole type should have been printed earlier in the trace,
+      we only print those elements if they are the last printed element
+      of a trace, and there is no explicit explanation for the
+      type error.
+  *)
+
+(* Provided by {!Printtyp} for the trace-printing functions *)
+type type_printers = {
+  mark_loops : type_expr -> unit;
+  type_expr  : Format.formatter -> type_expr -> unit;
+  path       : Format.formatter -> Path.t -> unit
+}
+
+(* [function _ _ -> .], but doesn't rely on type inference *)
+val explain_no_info : _ -> no_info -> _
+
+val explain_rec_occur :  type_printers -> rec_occur -> (Format.formatter -> unit) option
 
 module type Trace = sig
   type variant_info
@@ -74,6 +96,22 @@ module type Trace = sig
   val map : (desc -> desc) -> desc elt list -> desc elt list
 
   val incompatible_fields : string -> type_expr -> type_expr -> desc elt
+
+  (* The following are for printing traces, and are used by Printtyp *)
+
+  (* "is not compatible with type" is the archetypical value *)
+  val incompatibility_phrase : string
+
+  val constraint_escape_status : printing_status
+  val drop_from_trace : (Types.type_expr * 'a) elt -> bool
+  val explain_contextless_escaped_field_mismatch : bool
+
+  val explain_variant_info :
+    type_printers -> variant_info -> (Format.formatter -> unit) option
+  val explain_obj_info :
+    type_printers -> obj_info -> (Format.formatter -> unit) option
+  val explain_elt_info :
+    type_printers -> elt_info -> (Format.formatter -> unit) option
 end
 
 module Unification : sig

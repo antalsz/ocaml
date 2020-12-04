@@ -143,30 +143,38 @@ val tree_of_cltype_declaration:
 val cltype_declaration: Ident.t -> formatter -> class_type_declaration -> unit
 val type_expansion: type_expr -> Format.formatter -> type_expr -> unit
 val prepare_expansion: type_expr * type_expr -> type_expr * type_expr
-val report_unification_error:
-    formatter -> Env.t ->
-    Errortrace.Unification.t ->
-    ?type_expected_explanation:(formatter -> unit) ->
-    (formatter -> unit) -> (formatter -> unit) ->
-    unit
-val report_moregen_error:
-    formatter -> Env.t ->
-    Errortrace.Moregen.t ->
-    ?type_expected_explanation:(formatter -> unit) ->
-    (formatter -> unit) -> (formatter -> unit) ->
-    unit
-val report_equality_error:
-    formatter -> Env.t ->
-    Errortrace.Equality.t ->
-    ?type_expected_explanation:(formatter -> unit) ->
-    (formatter -> unit) -> (formatter -> unit) ->
-    unit
-val report_subtyping_error:
-    formatter -> Env.t -> Errortrace.Subtype.t -> string
-    -> Errortrace.Unification.t -> unit
 val report_ambiguous_type_error:
     formatter -> Env.t -> (Path.t * Path.t) -> (Path.t * Path.t) list ->
     (formatter -> unit) -> (formatter -> unit) -> (formatter -> unit) -> unit
+
+module type Trace_printer = sig
+  module Trace : Errortrace.Trace
+
+  (* We might be able to expose other functions from [Make_trace_printer] here *)
+  val report_error :
+    formatter -> Env.t ->
+    Trace.t ->
+    ?type_expected_explanation:(formatter -> unit) ->
+    (formatter -> unit) -> (formatter -> unit) ->
+    unit
+end
+
+
+module Make_trace_printer (Trace : Errortrace.Trace) :
+  Trace_printer with module Trace := Trace
+
+module Unification : Trace_printer with module Trace := Errortrace.Unification
+module Equality    : Trace_printer with module Trace := Errortrace.Equality
+module Moregen     : Trace_printer with module Trace := Errortrace.Moregen
+
+module Subtype : sig
+  val report_error :
+    formatter -> Env.t ->
+    Errortrace.Subtype.t ->
+    string ->
+    Errortrace.Unification.t ->
+    unit
+end
 
 (* for toploop *)
 val print_items: (Env.t -> signature_item -> 'a option) ->
