@@ -1444,12 +1444,6 @@ let check_abbrev_env env =
    4. The expansion requires the expansion of another abbreviation,
       and this other expansion fails.
 *)
-(* CR aspectorzabusky: Start here.  Functions from here down can raise [Escape], but only
-   [expand_head_unif] should raise [Unify].  Some of these should never raise *period*,
-   some of these should raise [Escape].
-
-   Real goals: [subtype], [moregen], and [eqtype] are the REAL targets for replacing
-   [Unify] with [Escape]. *)
 let expand_abbrev_gen kind find_type_expansion env ty =
   check_abbrev_env env;
   match ty with
@@ -1480,7 +1474,6 @@ let expand_abbrev_gen kind find_type_expansion env ty =
           (* assert (ty != ty'); *) (* PR#7324 *)
           ty'
       | None ->
-          (* CR aspectorzabusky: Look here *)
           match find_type_expansion path env with
           | exception Not_found ->
             (* another way to expand is to normalize the path itself *)
@@ -1491,7 +1484,6 @@ let expand_abbrev_gen kind find_type_expansion env ty =
             (* prerr_endline
               ("add a "^string_of_kind kind^" expansion for "^Path.name path);*)
             let ty' =
-              (* CR aspectorzabusky: here *)
               try
                 subst env level kind abbrev (Some ty) params args body
               with Cannot_subst New_exn -> raise (escape_exn Constraint)
@@ -1613,8 +1605,6 @@ let try_expand_safe_opt env ty =
 
 let expand_head_opt env ty =
   try try_expand_head try_expand_safe_opt env ty with Cannot_expand -> repr ty
-
-(* CR aspectorzabusky: Through here.  Probably. *)
 
 (* Make sure that the type parameters of the type constructor [ty]
    respect the type constraints *)
