@@ -1859,10 +1859,11 @@ let report_error env ppf = function
   | Repeated_parameter ->
       fprintf ppf "A type parameter occurs several times"
   | Unconsistent_constraint trace ->
-      fprintf ppf "The class constraints are not consistent.@.";
+      fprintf ppf "@[<v>The class constraints are not consistent.@ ";
       Printtyp.Unification.report_error ppf env trace
         (fun ppf -> fprintf ppf "Type")
-        (fun ppf -> fprintf ppf "is not compatible with type")
+        (fun ppf -> fprintf ppf "is not compatible with type");
+      fprintf ppf "@]"
   | Field_type_mismatch (k, m, trace) ->
       Printtyp.Unification.report_error ppf env trace
         (function ppf ->

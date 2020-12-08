@@ -1591,7 +1591,7 @@ let explain_unbound_gen ppf tv tl typ kwd pr =
       Btype.newgenty (Tobject(tv, ref None)) in
     Printtyp.reset_and_mark_loops_list [typ ti; ty0];
     fprintf ppf
-      ".@.@[<hov2>In %s@ %a@;<1 -2>the variable %a is unbound@]"
+      ".@ @[<hov2>In %s@ %a@;<1 -2>the variable %a is unbound@]"
       kwd pr ti Printtyp.type_expr tv
   with Not_found -> ()
 
@@ -1670,10 +1670,11 @@ let report_error ppf = function
         !Oprint.out_type (Printtyp.tree_of_typexp false ty)
         !Oprint.out_type (Printtyp.tree_of_typexp false ty')
   | Inconsistent_constraint (env, trace) ->
-      fprintf ppf "The type constraints are not consistent.@.";
+      fprintf ppf "@[<v>The type constraints are not consistent.@ ";
       Printtyp.Unification.report_error ppf env trace
         (fun ppf -> fprintf ppf "Type")
-        (fun ppf -> fprintf ppf "is not compatible with type")
+        (fun ppf -> fprintf ppf "is not compatible with type");
+      fprintf ppf "@]"
   | Type_clash (env, trace) ->
       Printtyp.Unification.report_error ppf env trace
         (function ppf ->
@@ -1687,7 +1688,7 @@ let report_error ppf = function
                    requires a second stub function@ \
                    for native-code compilation@]"
   | Unbound_type_var (ty, decl) ->
-      fprintf ppf "A type variable is unbound in this type declaration";
+      fprintf ppf "@[A type variable is unbound in this type declaration";
       let ty = Ctype.repr ty in
       begin match decl.type_kind, decl.type_manifest with
       | Type_variant tl, _ ->
@@ -1705,11 +1706,13 @@ let report_error ppf = function
       | Type_abstract, Some ty' ->
           explain_unbound_single ppf ty ty'
       | _ -> ()
-      end
+      end;
+      fprintf ppf "@]"
   | Unbound_type_var_ext (ty, ext) ->
-      fprintf ppf "A type variable is unbound in this extension constructor";
+      fprintf ppf "@[A type variable is unbound in this extension constructor";
       let args = tys_of_constr_args ext.ext_args in
-      explain_unbound ppf ty args (fun c -> c) "type" (fun _ -> "")
+      explain_unbound ppf ty args (fun c -> c) "type" (fun _ -> "");
+      fprintf ppf "@]"
   | Cannot_extend_private_type path ->
       fprintf ppf "@[%s@ %a@]"
         "Cannot extend private type definition"
