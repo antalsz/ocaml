@@ -99,6 +99,7 @@ exception Cannot_subst
 
 exception Cannot_unify_universal_variables of type_expr * type_expr
 
+exception Matches_failure of Env.t * Unification.t
 
 (**** Type level management ****)
 
@@ -3460,12 +3461,16 @@ let matches env ty ty' =
   let snap = snapshot () in
   let vars = rigidify ty in
   cleanup_abbrev ();
-  let ok =
-    try unify env ty ty'; all_distinct_vars env vars
-    with Unify _ -> false (* CR aspectorzabusky: throwing away the trace *)
-  in
-  backtrack snap;
-  ok
+  try
+    unify env ty ty';
+    if not (all_distinct_vars env vars) then begin
+      backtrack snap;
+      raise (Matches_failure (env, [Unification.diff ty ty']))
+    end;
+    backtrack snap
+  with Unify trace ->
+    backtrack snap;
+    raise (Matches_failure (env, trace))
 
 
                  (*********************************************)

@@ -67,7 +67,7 @@ type error =
   | Recursive_abbrev of string
   | Cycle_in_def of string * type_expr
   | Definition_mismatch of type_expr * Includecore.type_mismatch option
-  | Constraint_failed of type_expr * type_expr
+  | Constraint_failed of Env.t * Errortrace.Unification.t
   | Inconsistent_constraint of Env.t * Errortrace.Unification.t
   | Type_clash of Env.t * Errortrace.Unification.t
   | Parameters_differ of Path.t * type_expr * type_expr

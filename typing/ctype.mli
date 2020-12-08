@@ -27,6 +27,8 @@ exception Escape of Errortrace.desc Errortrace.escape
 exception Tags of label * label
 exception Cannot_expand
 exception Cannot_apply
+exception Matches_failure of Env.t * Errortrace.Unification.t
+  (* Raised from [matches], hence the odd name *)
 
 val init_def: int -> unit
         (* Set the initial variable level *)
@@ -198,7 +200,7 @@ val rigidify: type_expr -> type_expr list
         (* "Rigidify" a type and return its type variable *)
 val all_distinct_vars: Env.t -> type_expr list -> bool
         (* Check those types are all distinct type variables *)
-val matches: Env.t -> type_expr -> type_expr -> bool
+val matches: Env.t -> type_expr -> type_expr -> unit
         (* Same as [moregeneral false], implemented using the two above
            functions and backtracking. Ignore levels *)
 

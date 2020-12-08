@@ -34,7 +34,7 @@ type error =
   | Recursive_abbrev of string
   | Cycle_in_def of string * type_expr
   | Definition_mismatch of type_expr * Includecore.type_mismatch option
-  | Constraint_failed of type_expr * type_expr
+  | Constraint_failed of Env.t * Errortrace.Unification.t
   | Inconsistent_constraint of Env.t * Errortrace.Unification.t
   | Type_clash of Env.t * Errortrace.Unification.t
   | Parameters_differ of Path.t * type_expr * type_expr
@@ -258,8 +258,11 @@ let make_constructor env type_path type_params sargs sret_type =
         | Tconstr (p', params, _) when Path.same type_path p' ->
             params
         | _ ->
-            raise (Error (sret_type.ptyp_loc, Constraint_failed
-                            (ret_type, Ctype.newconstr type_path type_params)))
+          raise (Error (sret_type.ptyp_loc,
+                        Constraint_failed
+                          (env, [Errortrace.Unification.diff
+                                   ret_type
+                                   (Ctype.newconstr type_path type_params)])))
       in
       widen z;
       targs, Some tret_type, args, Some ret_type, params
@@ -561,8 +564,11 @@ let rec check_constraints_rec env loc visited ty =
       with Ctype.Unify _ -> assert false
       | Not_found -> raise (Error(loc, Unavailable_type_constructor path))
       end;
-      if not (Ctype.matches env ty ty') then
-        raise (Error(loc, Constraint_failed (ty, ty')));
+      begin
+        try Ctype.matches env ty ty'
+        with Ctype.Matches_failure (env, trace) ->
+          raise (Error(loc, Constraint_failed (env, trace)))
+      end;
       List.iter (check_constraints_rec env loc visited) args
   | Tpoly (ty, tl) ->
       let _, ty = Ctype.instance_poly false tl ty in
@@ -786,9 +792,8 @@ let check_recursion env loc path decl to_check =
                 Ctype.instance_parameterized_type params0 body0 in
               begin
                 try List.iter2 (Ctype.unify env) params args'
-                with Ctype.Unify _ ->
-                  raise (Error(loc, Constraint_failed
-                                 (ty, Ctype.newconstr path' params0)));
+                with Ctype.Unify trace ->
+                  raise (Error(loc, Constraint_failed (env, trace)));
               end;
               check_regular path' args (path' :: prev_exp) body
             with Not_found -> ()
@@ -1649,14 +1654,12 @@ let report_error ppf = function
         Printtyp.type_expr ty
         (Includecore.report_type_mismatch "the original" "this" "definition")
         err
-  | Constraint_failed (ty, ty') ->
-      Printtyp.reset_and_mark_loops ty;
-      Printtyp.mark_loops ty';
-      Printtyp.Naming_context.reset ();
-      fprintf ppf "@[%s@ @[<hv>Type@ %a@ should be an instance of@ %a@]@]"
-        "Constraints are not satisfied in this type."
-        !Oprint.out_type (Printtyp.tree_of_typexp false ty)
-        !Oprint.out_type (Printtyp.tree_of_typexp false ty')
+  | Constraint_failed (env, trace) ->
+      fprintf ppf "@[<v>Constraints are not satisfied in this type.@ ";
+      Printtyp.Unification.report_error ppf env trace
+        (fun ppf -> fprintf ppf "Type")
+        (fun ppf -> fprintf ppf "should be an instance of");
+      fprintf ppf "@]"
   | Parameters_differ (path, ty, ty') ->
       Printtyp.reset_and_mark_loops ty;
       Printtyp.mark_loops ty';
