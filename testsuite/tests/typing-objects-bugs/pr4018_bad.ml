@@ -29,7 +29,6 @@ class entity (id : id) =
     method entity_id = id
   end
 
-(* CR aspectorzabusky: This error message isn't great *)
 class ['entity] entity_container =
   object (self)
     inherit ['entity, id] observer as observer

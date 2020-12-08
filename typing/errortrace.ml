@@ -116,7 +116,7 @@ module type Trace_core = sig
 
   val flatten: (type_expr -> type_expr -> 'a) -> t -> 'a elt list
 
-  val map : (desc -> desc) -> desc elt list -> desc elt list
+  val map : ('a -> 'b) -> 'a elt list -> 'b elt list
 
   val incompatible_fields : string -> type_expr -> type_expr -> desc elt
 end

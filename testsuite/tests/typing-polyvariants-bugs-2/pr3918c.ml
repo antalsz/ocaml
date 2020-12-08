@@ -21,7 +21,5 @@ ocamlc_byte_exit_status = "2"
 
 open Pr3918b
 
-(* CR aspectorzabusky: This error message is garbage, but the situation is also terrible,
-   so this may not matter *)
 let f x = (x : 'a vlist :> 'b vlist)
 let f (x : 'a vlist) = (x : 'b vlist)
