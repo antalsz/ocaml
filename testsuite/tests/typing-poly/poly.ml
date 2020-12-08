@@ -966,6 +966,19 @@ Error: Constraints are not satisfied in this type.
        Type 'a u t should be an instance of g t
 |}];;
 
+(* Full unification trace reported for "Constraints are not satisfied in this type" *)
+type ('a,'b) t constraint 'a = 'b
+               constraint 'a = int
+  and 'a u = (float,string) t;;
+[%%expect {|
+Line 3, characters 13-29:
+3 |   and 'a u = (float,string) t;;
+                 ^^^^^^^^^^^^^^^^
+Error: Constraints are not satisfied in this type.
+       Type (float, string) t should be an instance of (int, int) t
+       Type float is not compatible with type int
+|}]
+
 (* Example of wrong expansion *)
 type 'a u = < m : 'a v > and 'a v = 'a list u;;
 [%%expect {|
