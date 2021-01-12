@@ -18,16 +18,16 @@
 open Asttypes
 open Types
 
-exception Unify of Errortrace.Unification.t
-exception Equality of Errortrace.Equality.t
-exception Moregen of Errortrace.Moregen.t
-exception Subtype of Errortrace.Subtype.t * Errortrace.Unification.t
+exception Unify of Errortrace.unification Errortrace.t
+exception Equality of Errortrace.non_unification Errortrace.t
+exception Moregen of Errortrace.non_unification Errortrace.t
+exception Subtype of Errortrace.Subtype.t * Errortrace.unification Errortrace.t
 exception Escape of Errortrace.desc Errortrace.escape
 
 exception Tags of label * label
 exception Cannot_expand
 exception Cannot_apply
-exception Matches_failure of Env.t * Errortrace.Unification.t
+exception Matches_failure of Env.t * Errortrace.unification Errortrace.t
   (* Raised from [matches], hence the odd name *)
 
 val init_def: int -> unit
@@ -210,13 +210,13 @@ val reify_univars : Types.type_expr -> Types.type_expr
 type class_match_failure =
     CM_Virtual_class
   | CM_Parameter_arity_mismatch of int * int
-  | CM_Type_parameter_mismatch of Env.t * Errortrace.Equality.t
+  | CM_Type_parameter_mismatch of Env.t * Errortrace.non_unification Errortrace.t
   | CM_Class_type_mismatch of Env.t * class_type * class_type
-  | CM_Parameter_mismatch of Env.t * Errortrace.Moregen.t
-  | CM_Val_type_mismatch of string * Env.t * Errortrace.Moregen.t
-  | CM_Val_type_mismatch_eq of string * Env.t * Errortrace.Equality.t
-  | CM_Meth_type_mismatch of string * Env.t * Errortrace.Moregen.t
-  | CM_Meth_type_mismatch_eq of string * Env.t * Errortrace.Equality.t
+  | CM_Parameter_mismatch of Env.t * Errortrace.non_unification Errortrace.t
+  | CM_Val_type_mismatch of string * Env.t * Errortrace.non_unification Errortrace.t
+  | CM_Val_type_mismatch_eq of string * Env.t * Errortrace.non_unification Errortrace.t
+  | CM_Meth_type_mismatch of string * Env.t * Errortrace.non_unification Errortrace.t
+  | CM_Meth_type_mismatch_eq of string * Env.t * Errortrace.non_unification Errortrace.t
   | CM_Non_mutable_value of string
   | CM_Non_concrete_value of string
   | CM_Missing_value of string

@@ -23,7 +23,6 @@ open Parsetree
 open Typedtree
 open Types
 open Ctype
-open Errortrace
 
 exception Already_bound
 
@@ -34,8 +33,8 @@ type error =
   | Bound_type_variable of string
   | Recursive_type
   | Unbound_row_variable of Longident.t
-  | Type_mismatch of Errortrace.Unification.t
-  | Alias_type_mismatch of Errortrace.Unification.t
+  | Type_mismatch of Errortrace.unification Errortrace.t
+  | Alias_type_mismatch of Errortrace.unification Errortrace.t
   | Present_has_conjunction of string
   | Present_has_no_type of string
   | Constructor_mismatch of type_expr * type_expr
@@ -236,7 +235,7 @@ and transl_type_aux env policy styp =
       List.iter2
         (fun (sty, cty) ty' ->
            try unify_param env ty' cty.ctyp_type with Unify trace ->
-             let trace = Unification.swap trace in
+             let trace = Errortrace.swap_unification_trace trace in
              raise (Error(sty.ptyp_loc, env, Type_mismatch trace))
         )
         (List.combine stl args) params;
@@ -289,7 +288,7 @@ and transl_type_aux env policy styp =
       List.iter2
         (fun (sty, cty) ty' ->
            try unify_var env ty' cty.ctyp_type with Unify trace ->
-             let trace = Unification.swap trace in
+             let trace = Errortrace.swap_unification_trace trace in
              raise (Error(sty.ptyp_loc, env, Type_mismatch trace))
         )
         (List.combine stl args) params;
@@ -341,7 +340,7 @@ and transl_type_aux env policy styp =
           in
           let ty = transl_type env policy st in
           begin try unify_var env t ty.ctyp_type with Unify trace ->
-            let trace = Unification.swap trace in
+            let trace = Errortrace.swap_unification_trace trace in
             raise(Error(styp.ptyp_loc, env, Alias_type_mismatch trace))
           end;
           ty
@@ -352,7 +351,7 @@ and transl_type_aux env policy styp =
             TyVarMap.add alias (t, styp.ptyp_loc) !used_variables;
           let ty = transl_type env policy st in
           begin try unify_var env t ty.ctyp_type with Unify trace ->
-            let trace = Unification.swap trace in
+            let trace = Errortrace.swap_unification_trace trace in
             raise(Error(styp.ptyp_loc, env, Alias_type_mismatch trace))
           end;
           if !Clflags.principal then begin

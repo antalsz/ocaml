@@ -1987,10 +1987,10 @@ let explanation_diff env t3 t4 : (Format.formatter -> unit) option =
   | _ ->
     None
 
-type ('is_unification, 'is_equality, 'is_moregen) trace_format = {
+type ('variety) trace_format = {
   incompatibility_phrase : string;
   constraint_escape_status : printing_status;
-  drop_from_trace : 'a. (Types.type_expr * 'a, 'is_unification, 'is_equality, 'is_moregen) Errortrace.elt -> bool;
+  drop_from_trace : 'a. (Types.type_expr * 'a, 'variety) Errortrace.elt -> bool;
   explain_contextless_escaped_field_mismatch : bool
 }
 
@@ -2057,7 +2057,7 @@ let explain_fixed_row_case ppf = function
   | Errortrace.Cannot_be_closed -> fprintf ppf "it cannot be closed"
   | Errortrace.Cannot_add_tags tags -> fprintf ppf "it may not allow the tag(s) %a" print_tags tags
 
-let explain_variant (type u e m) : (u, e, m) Errortrace.variant -> _ = function
+let explain_variant (type variety) : variety Errortrace.variant -> _ = function
   (* Common *)
   | Errortrace.Incompatible_types_for s -> Some(dprintf "@,Types for tag `%s are incompatible" s)
   (* Unification *)
@@ -2078,16 +2078,14 @@ let explain_variant (type u e m) : (u, e, m) Errortrace.variant -> _ = function
     (* this case never happens *)
     None
   (* Equality & Moregen *)
-  | Errortrace.Openness (WhenEquality ord) ->
-    Some(dprintf "@,The %a is open and the %a is not"
-           Errortrace.print_pos ord
-           Errortrace.print_pos (Errortrace.swap_position ord))
-  | Errortrace.Openness WhenMoregen ->
-    Some (dprintf "@,@[The second object is open and the first is not@]")
+  | Errortrace.Openness pos ->
+    Some(dprintf "@,The %a variant is open and the %a is not"
+           Errortrace.print_pos pos
+           Errortrace.print_pos (Errortrace.swap_position pos))
   | Errortrace.Missing (pos,name) ->
     Some (dprintf "@,@[The %a declaration has no tag `%s@]" Errortrace.print_pos pos name)
 
-let explain_object (type u e m) : (u,e,m) Errortrace.obj -> _ = function
+let explain_object (type variety) : variety Errortrace.obj -> _ = function
   | Errortrace.Missing_field (pos,f) -> Some(
     dprintf
       "@,@[The %a object type has no method %s@]"
@@ -2102,7 +2100,7 @@ let explain_object (type u e m) : (u,e,m) Errortrace.obj -> _ = function
     dprintf "@,Self type cannot be unified with a closed object type"
   )
 
-let explanation (type u e m) trace_format intro prev env (q : ('a,u,e,m) Errortrace.elt) =
+let explanation (type variety) trace_format intro prev env (q : ('a, variety) Errortrace.elt) =
   match q with
   | Errortrace.Diff { Errortrace.got = _,s; expected = _,t } ->
     explanation_diff env s t

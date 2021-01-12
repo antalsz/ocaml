@@ -55,17 +55,10 @@ open Errortrace
 
 (**** Errors ****)
 
-module Unification = Errortrace.Unification
-exception Unify of Unification.t
-
-module Equality = Errortrace.Equality
-exception Equality of Equality.t
-
-module Moregen = Errortrace.Moregen
-exception Moregen of Moregen.t
-
-module Subtype = Errortrace.Subtype
-exception Subtype of Subtype.t * Unification.t
+exception Unify of unification Errortrace.t
+exception Equality of non_unification Errortrace.t
+exception Moregen of non_unification Errortrace.t
+exception Subtype of Errortrace.Subtype.t * unification Errortrace.t
 
 exception Escape of desc Errortrace.escape
 
@@ -99,7 +92,7 @@ exception Cannot_subst
 
 exception Cannot_unify_universal_variables of type_expr * type_expr
 
-exception Matches_failure of Env.t * Unification.t
+exception Matches_failure of Env.t * unification Errortrace.t
 
 (**** Type level management ****)
 
@@ -2569,7 +2562,7 @@ and unify2 env t1 t2 =
     unify3 env t1 t1' t2 t2'
   else
     try unify3 env t2 t2' t1 t1' with Unify trace ->
-      raise (Unify (Unification.swap trace))
+      raise (Unify (swap_unification_trace trace))
 
 and unify3 env t1 t1' t2 t2' =
   (* Third step: truly unification *)
@@ -3312,7 +3305,7 @@ and moregen_row inst_nongen type_pairs env row1 row2 =
   end;
   if row1.row_closed then begin
     match row2.row_closed, r2 with
-    | false, _ -> raise (Moregen [Variant (Openness WhenMoregen)])
+    | false, _ -> raise (Moregen [Variant (Openness Second)])
     | _, ((lb, _) :: _) -> raise (Moregen [Variant (Missing (First, lb))])
     | _, _ -> ()
   end;
@@ -3610,7 +3603,7 @@ and eqtype_row rename type_pairs subst env row1 row2 =
   let row1 = row_repr row1 and row2 = row_repr row2 in
   let r1, r2, pairs = merge_row_fields row1.row_fields row2.row_fields in
   if row1.row_closed <> row2.row_closed
-  then raise (Equality [Variant (Openness (WhenEquality (if row2.row_closed then First else Second)))]);
+  then raise (Equality [Variant (Openness (if row2.row_closed then First else Second))]);
   if not row1.row_closed then begin
     match r1, r2 with
     | (lb1, _)::_, _ -> raise (Equality [Variant (Missing (Second, lb1))])
@@ -3694,13 +3687,13 @@ let rec equal_private env params1 ty1 params2 ty2 =
 type class_match_failure =
     CM_Virtual_class
   | CM_Parameter_arity_mismatch of int * int
-  | CM_Type_parameter_mismatch of Env.t * Equality.t
+  | CM_Type_parameter_mismatch of Env.t * non_unification Errortrace.t (* Equality *)
   | CM_Class_type_mismatch of Env.t * class_type * class_type
-  | CM_Parameter_mismatch of Env.t * Moregen.t
-  | CM_Val_type_mismatch of string * Env.t * Moregen.t
-  | CM_Val_type_mismatch_eq of string * Env.t * Equality.t
-  | CM_Meth_type_mismatch of string * Env.t * Moregen.t
-  | CM_Meth_type_mismatch_eq of string * Env.t * Equality.t
+  | CM_Parameter_mismatch of Env.t * non_unification Errortrace.t (* Moregen *)
+  | CM_Val_type_mismatch of string * Env.t * non_unification Errortrace.t (* Moregen *)
+  | CM_Val_type_mismatch_eq of string * Env.t * non_unification Errortrace.t (* Equality *)
+  | CM_Meth_type_mismatch of string * Env.t * non_unification Errortrace.t (* Moregen *)
+  | CM_Meth_type_mismatch_eq of string * Env.t * non_unification Errortrace.t (* Equality *)
   | CM_Non_mutable_value of string
   | CM_Non_concrete_value of string
   | CM_Missing_value of string

@@ -148,25 +148,26 @@ val report_ambiguous_type_error:
     (formatter -> unit) -> (formatter -> unit) -> (formatter -> unit) -> unit
 
 
-type ('is_unification, 'is_equality, 'is_moregen) trace_format
-val unification : (Errortrace.Is_unification.yes, Errortrace.Is_equality.no,  Errortrace.Is_moregen.no)  trace_format
-val equality    : (Errortrace.Is_unification.no,  Errortrace.Is_equality.yes, Errortrace.Is_moregen.no)  trace_format
-val moregen     : (Errortrace.Is_unification.no,  Errortrace.Is_equality.no,  Errortrace.Is_moregen.yes) trace_format
+type 'variety trace_format
+val unification : Errortrace.unification     trace_format
+val equality    : Errortrace.non_unification trace_format
+val moregen     : Errortrace.non_unification trace_format
 
 val report_error :
-  ('is_unification, 'is_moregen, 'is_equality) trace_format ->
+  'variety trace_format ->
   formatter -> Env.t ->
-  ('is_unification, 'is_moregen, 'is_equality) Errortrace.t ->
+  'variety Errortrace.t ->
   ?type_expected_explanation:(formatter -> unit) ->
   (formatter -> unit) -> (formatter -> unit) ->
   unit
 
 module Subtype : sig
   val report_error :
-    formatter -> Env.t ->
+    formatter ->
+    Env.t ->
     Errortrace.Subtype.t ->
     string ->
-    Errortrace.Unification.t ->
+    Errortrace.unification Errortrace.t ->
     unit
 end
 
