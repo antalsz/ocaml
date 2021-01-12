@@ -3144,7 +3144,7 @@ let moregen_update_scope scope ty =
 let occur_for_moregen env t1 t2 =
   try
     occur env t1 t2
-  with Occur -> raise (Moregen [Rec_occur(t1, t2)])
+  with Occur -> raise (Moregen [Rec_occur(t1, t2)]) (* ASZ: We may be able to replace this with [assert false] *)
 
 (*
    Update the level of [ty]. First check that the levels of generic
@@ -3188,7 +3188,7 @@ let rec moregen inst_nongen type_pairs env t1 t2 =
     | (Tvar _, _) when may_instantiate inst_nongen t1 ->
         moregen_occur env t1.level t2;
         moregen_update_scope t1.scope t2;
-        occur_for_moregen env t1 t2; (* ASZ: What if we make this [assert false]? *)
+        occur_for_moregen env t1 t2;
         link_type t1 t2
     | (Tconstr (p1, [], _), Tconstr (p2, [], _)) when Path.same p1 p2 ->
         ()
