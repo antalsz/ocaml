@@ -1903,7 +1903,7 @@ let check_univars env expans kind exp ty_expected vars =
   let ty = newgenty (Tpoly(repr exp.exp_type, vars'))
   and ty_expected = repr ty_expected in
   raise (Error (exp.exp_loc, env,
-                Less_general(kind, [Unification.diff ty ty_expected])))
+                Less_general(kind, [Errortrace.diff ty ty_expected])))
 
 let check_partial_application statement exp =
   let rec f delay =
@@ -4649,7 +4649,7 @@ open Printtyp
 
 (* Returns the first diff of the trace *)
 let type_clash_of_trace trace =
-  Errortrace.Unification.(explain trace (fun ~prev:_ -> function
+  Errortrace.(explain trace (fun ~prev:_ -> function
     | Diff diff -> Some diff
     | _ -> None
   ))
@@ -4777,7 +4777,7 @@ let report_type_expected_explanation_opt expl ppf =
 let report_unification_error ~loc ?sub env trace
     ?type_expected_explanation txt1 txt2 =
   Location.error_of_printer ~loc ?sub (fun ppf () ->
-    Printtyp.Unification.report_error ppf env trace
+    Printtyp.report_error Printtyp.unification ppf env trace
       ?type_expected_explanation txt1 txt2
   ) ()
 
@@ -4798,7 +4798,7 @@ let report_error ~loc env = function
       let diff = type_clash_of_trace trace in
       let sub = report_pattern_type_clash_hints pat diff in
       Location.error_of_printer ~loc ~sub (fun ppf () ->
-        Printtyp.Unification.report_error ppf env trace
+        Printtyp.report_error Printtyp.unification ppf env trace
           (function ppf ->
             fprintf ppf "This pattern matches values of type")
           (function ppf ->
@@ -4831,7 +4831,7 @@ let report_error ~loc env = function
         ]
       in
       Location.error_of_printer ~loc ~sub (fun ppf () ->
-        Printtyp.Unification.report_error ppf env trace
+        Printtyp.report_error Printtyp.unification ppf env trace
           ~type_expected_explanation:
             (report_type_expected_explanation_opt explanation)
           (function ppf ->
@@ -4948,7 +4948,7 @@ let report_error ~loc env = function
         v
   | Coercion_failure (ty, ty', trace, b) ->
       Location.error_of_printer ~loc (fun ppf () ->
-        Printtyp.Unification.report_error ppf env trace
+        Printtyp.report_error Printtyp.unification ppf env trace
           (function ppf ->
              let ty, ty' = prepare_expansion (ty, ty') in
              fprintf ppf "This expression cannot be coerced to type@;<1 2>%a;@ \

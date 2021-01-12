@@ -260,7 +260,7 @@ let make_constructor env type_path type_params sargs sret_type =
         | _ ->
           raise (Error (sret_type.ptyp_loc,
                         Constraint_failed
-                          (env, [Errortrace.Unification.diff
+                          (env, [Errortrace.diff
                                    ret_type
                                    (Ctype.newconstr type_path type_params)])))
       in
@@ -1656,7 +1656,7 @@ let report_error ppf = function
         err
   | Constraint_failed (env, trace) ->
       fprintf ppf "@[<v>Constraints are not satisfied in this type.@ ";
-      Printtyp.Unification.report_error ppf env trace
+      Printtyp.report_error Printtyp.unification ppf env trace
         (fun ppf -> fprintf ppf "Type")
         (fun ppf -> fprintf ppf "should be an instance of");
       fprintf ppf "@]"
@@ -1671,12 +1671,12 @@ let report_error ppf = function
         !Oprint.out_type (Printtyp.tree_of_typexp false ty')
   | Inconsistent_constraint (env, trace) ->
       fprintf ppf "@[<v>The type constraints are not consistent.@ ";
-      Printtyp.Unification.report_error ppf env trace
+      Printtyp.report_error Printtyp.unification ppf env trace
         (fun ppf -> fprintf ppf "Type")
         (fun ppf -> fprintf ppf "is not compatible with type");
       fprintf ppf "@]"
   | Type_clash (env, trace) ->
-      Printtyp.Unification.report_error ppf env trace
+      Printtyp.report_error Printtyp.unification ppf env trace
         (function ppf ->
            fprintf ppf "This type constructor expands to type")
         (function ppf ->
@@ -1730,7 +1730,7 @@ let report_error ppf = function
            "the type" "this extension" "definition")
         err
   | Rebind_wrong_type (lid, env, trace) ->
-      Printtyp.Unification.report_error ppf env trace
+      Printtyp.report_error Printtyp.unification ppf env trace
         (function ppf ->
           fprintf ppf "The constructor %a@ has type"
             Printtyp.longident lid)

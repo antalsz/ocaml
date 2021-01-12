@@ -147,25 +147,19 @@ val report_ambiguous_type_error:
     formatter -> Env.t -> (Path.t * Path.t) -> (Path.t * Path.t) list ->
     (formatter -> unit) -> (formatter -> unit) -> (formatter -> unit) -> unit
 
-module type Trace_printer = sig
-  module Trace : Errortrace.Trace
 
-  (* We might be able to expose other functions from [Make_trace_printer] here *)
-  val report_error :
-    formatter -> Env.t ->
-    Trace.t ->
-    ?type_expected_explanation:(formatter -> unit) ->
-    (formatter -> unit) -> (formatter -> unit) ->
-    unit
-end
+type ('is_unification, 'is_equality, 'is_moregen) trace_format
+val unification : (Errortrace.Is_unification.yes, Errortrace.Is_equality.no,  Errortrace.Is_moregen.no)  trace_format
+val equality    : (Errortrace.Is_unification.no,  Errortrace.Is_equality.yes, Errortrace.Is_moregen.no)  trace_format
+val moregen     : (Errortrace.Is_unification.no,  Errortrace.Is_equality.no,  Errortrace.Is_moregen.yes) trace_format
 
-
-module Make_trace_printer (Trace : Errortrace.Trace) :
-  Trace_printer with module Trace := Trace
-
-module Unification : Trace_printer with module Trace := Errortrace.Unification
-module Equality    : Trace_printer with module Trace := Errortrace.Equality
-module Moregen     : Trace_printer with module Trace := Errortrace.Moregen
+val report_error :
+  ('is_unification, 'is_moregen, 'is_equality) trace_format ->
+  formatter -> Env.t ->
+  ('is_unification, 'is_moregen, 'is_equality) Errortrace.t ->
+  ?type_expected_explanation:(formatter -> unit) ->
+  (formatter -> unit) -> (formatter -> unit) ->
+  unit
 
 module Subtype : sig
   val report_error :

@@ -32,130 +32,93 @@ val explain: 'a list ->
   (prev:'a option -> 'a -> 'b option) ->
   'b option
 
-type no_info = |
+(* Type indices *)
+module type Type_bool = sig
+  type yes = private Yes
+  type no  = private No
+end
 
-type rec_occur = Rec_occur of type_expr * type_expr
+module Is_unification : Type_bool
+module Is_equality    : Type_bool
+module Is_moregen     : Type_bool
 
-(* Used when printing traces *)
-type printing_status =
-  | Discard
-  | Keep
-  | Optional_refinement
-  (** An [Optional_refinement] printing status is attributed to trace
-      elements that are focusing on a new subpart of a structural type.
-      Since the whole type should have been printed earlier in the trace,
-      we only print those elements if they are the last printed element
-      of a trace, and there is no explicit explanation for the
-      type error.
-  *)
+type fixed_row_case =
+  | Cannot_be_closed
+  | Cannot_add_tags of string list
 
-(* Provided by {!Printtyp} for the trace-printing functions *)
-type type_printers = {
-  mark_loops : type_expr -> unit;
-  type_expr  : Format.formatter -> type_expr -> unit;
-  path       : Format.formatter -> Path.t -> unit
-}
+type ('is_equality, 'is_moregen) openness =
+  | WhenEquality : position -> (Is_equality.yes, Is_moregen.no) openness
+  | WhenMoregen : (Is_equality.no, Is_moregen.yes) openness
 
-(* [function _ _ -> .], but doesn't rely on type inference *)
-val explain_no_info : _ -> no_info -> _
+type ('is_unification, 'is_equality, 'is_moregen) variant =
+  (* Common *)
+  | Incompatible_types_for : string -> (_, _, _) variant
+  (* Unification *)
+  | No_intersection : (Is_unification.yes, Is_equality.no, Is_moregen.no) variant
+  | No_tags : position * (Asttypes.label * row_field) list -> (Is_unification.yes, Is_equality.no, Is_moregen.no) variant
+  | Fixed_row : position * fixed_row_case * fixed_explanation -> (Is_unification.yes, Is_equality.no, Is_moregen.no) variant
+  (* Equality & Moregen *)
+  | Openness : ('e, 'm) openness -> (Is_unification.no, 'e, 'm) variant
+  | Missing :  position * Asttypes.label -> (Is_unification.no, _, _) variant
 
-val explain_rec_occur :  type_printers -> rec_occur -> (Format.formatter -> unit) option
+type ('is_unification, 'is_equality, 'is_moregen) obj =
+  (* Common *)
+  | Missing_field : position * string -> (_, _, _) obj
+  | Abstract_row : position -> (_, _, _) obj
+  (* Unification *)
+  | Self_cannot_be_closed : (Is_unification.yes, Is_equality.no, Is_moregen.no) obj
+
+type ('a, 'is_unification, 'is_equality, 'is_moregen) elt =
+  (* Common *)
+  | Diff : 'a diff -> ('a, _, _, _) elt
+  | Variant :  ('u, 'e, 'm) variant -> ('a, 'u, 'e, 'm) elt
+  | Obj :  ('u, 'e, 'm) obj -> ('a, 'u, 'e, 'm) elt
+  | Escape : 'a escape -> ('a, _, _, _) elt
+  | Incompatible_fields : { name:string; diff: type_expr diff } -> ('a, _, _, _) elt
+  (* Unification & Moregen *)
+  | Rec_occur : type_expr * type_expr -> ('a, _, Is_equality.no, _) elt
+
+type ('is_unification, 'is_equality, 'is_moregen) t =
+  (desc, 'is_unification, 'is_equality, 'is_moregen) elt list
+
+val diff : type_expr -> type_expr -> (desc, _, _, _) elt
+
+(** [flatten f trace] flattens all elements of type {!desc} in
+    [trace] to either [f x.t expanded] if [x.expanded=Some expanded]
+    or [f x.t x.t] otherwise *)
+val flatten: (type_expr -> type_expr -> 'a) -> ('u, 'e, 'm) t -> ('a, 'u, 'e, 'm) elt list
+
+val map : ('a -> 'b) -> ('a, 'u, 'e, 'm) elt list -> ('b, 'u, 'e, 'm) elt list
+
+val incompatible_fields : string -> type_expr -> type_expr -> (desc, _, _, _) elt
+
 
 module type Trace = sig
-  type variant_info
-  type obj_info
-  type elt_info
+  type is_unification
+  type is_equality
+  type is_moregen
 
-  type variant =
-    | Incompatible_types_for of string
-    | Vinfo of variant_info
-
-  type obj =
-    | Missing_field of position * string
-    | Abstract_row of position
-    | Oinfo of obj_info
-
-  type 'a elt =
-    | Diff of 'a diff
-    | Variant of variant
-    | Obj of obj
-    | Escape of 'a escape
-    | Incompatible_fields of { name:string; diff: type_expr diff }
-    | Info of elt_info
-
-  type t = desc elt list
-
-  val diff : type_expr -> type_expr -> desc elt
-
-  (** [flatten f trace] flattens all elements of type {!desc} in
-      [trace] to either [f x.t expanded] if [x.expanded=Some expanded]
-      or [f x.t x.t] otherwise *)
-  val flatten: (type_expr -> type_expr -> 'a) -> t -> 'a elt list
-
-  val map : ('a -> 'b) -> 'a elt list -> 'b elt list
-
-  val incompatible_fields : string -> type_expr -> type_expr -> desc elt
-
-  (* The following are for printing traces, and are used by Printtyp *)
-
-  (* "is not compatible with type" is the archetypical value *)
-  val incompatibility_phrase : string
-
-  val constraint_escape_status : printing_status
-  val drop_from_trace : (Types.type_expr * 'a) elt -> bool
-  val explain_contextless_escaped_field_mismatch : bool
-
-  val explain_variant_info :
-    type_printers -> variant_info -> (Format.formatter -> unit) option
-  val explain_obj_info :
-    type_printers -> obj_info -> (Format.formatter -> unit) option
-  val explain_elt_info :
-    type_printers -> elt_info -> (Format.formatter -> unit) option
+  type nonrec variant = (    is_unification, is_equality, is_moregen) variant
+  type nonrec obj     = (    is_unification, is_equality, is_moregen) obj
+  type nonrec 'a elt  = ('a, is_unification, is_equality, is_moregen) elt
+  type nonrec t       = (    is_unification, is_equality, is_moregen) t
 end
 
 module Unification : sig
-  type fixed_row_case =
-    | Cannot_be_closed
-    | Cannot_add_tags of string list
+  include Trace with type is_unification := Is_unification.yes
+                 and type is_equality    := Is_equality.no
+                 and type is_moregen     := Is_moregen.no
 
-  type variant_info =
-    | No_intersection
-    | No_tags of position * (Asttypes.label * row_field) list
-    | Fixed_row of position * fixed_row_case * fixed_explanation
-
-  type obj_info = Self_cannot_be_closed
-
-  include Trace with type variant_info := variant_info
-                 and type obj_info := obj_info
-                 and type elt_info = rec_occur
-
-  (** Switch [expected] and [got] *)
   val swap : t -> t
 end
 
-module Equality : sig
-  type variant_info =
-    | Openness of position
-    | Missing of position * Asttypes.label
-    (* [Missing] is shared with [Moregen.variant_info], but [Moregen.Openness] takes 0
-       arguments instead of 1 *)
+module Equality : Trace with type is_unification := Is_unification.no
+                         and type is_equality    := Is_equality.yes
+                         and type is_moregen     := Is_moregen.no
 
-  include Trace with type variant_info := variant_info
-                 and type obj_info = no_info
-                 and type elt_info = no_info
-end
-
-module Moregen : sig
-  type variant_info =
-    | Openness
-    | Missing of position * Asttypes.label
-    (* [Missing] is shared with [Equality.variant_info], but [Equality.Openness] takes 1
-       argument instead of 0 *)
-
-  include Trace with type variant_info := variant_info
-                 and type obj_info = no_info
-                 and type elt_info = rec_occur
-end
+module Moregen : Trace with type is_unification := Is_unification.no
+                        and type is_equality    := Is_equality.no
+                        and type is_moregen     := Is_moregen.yes
 
 module Subtype : sig
   type 'a elt =
