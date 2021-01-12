@@ -2082,8 +2082,6 @@ let explain_variant (type variety) : variety Errortrace.variant -> _ = function
     Some(dprintf "@,The %a variant is open and the %a is not"
            Errortrace.print_pos pos
            Errortrace.print_pos (Errortrace.swap_position pos))
-  | Errortrace.Missing (pos,name) ->
-    Some (dprintf "@,@[The %a declaration has no tag `%s@]" Errortrace.print_pos pos name)
 
 let explain_object (type variety) : variety Errortrace.obj -> _ = function
   | Errortrace.Missing_field (pos,f) -> Some(

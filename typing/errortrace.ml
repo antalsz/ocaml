@@ -62,14 +62,12 @@ type fixed_row_case =
 type 'variety variant =
   (* Common *)
   | Incompatible_types_for : string -> _ variant
+  | No_tags : position * (Asttypes.label * row_field) list -> _ variant
   (* Unification *)
   | No_intersection : unification variant
-  | No_tags : position * (Asttypes.label * row_field) list -> unification variant
   | Fixed_row : position * fixed_row_case * fixed_explanation -> unification variant
   (* Equality & Moregen *)
   | Openness : position (* Always [Second] for Moregen *) -> non_unification variant
-  | Missing : position * Asttypes.label -> non_unification variant
-(* ASZ: Missing → No_tags, it's just better *)
 
 type 'variety obj =
   (* Common *)

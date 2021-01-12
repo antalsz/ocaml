@@ -3301,13 +3301,13 @@ and moregen_row inst_nongen type_pairs env row1 row2 =
   begin
     match r1 with
     | [] -> ()
-    | (lb, _) :: _ -> raise (Moregen [Variant (Missing (Second, lb))])
+    | _ :: _ -> raise (Moregen [Variant (No_tags (Second, r1))])
   end;
   if row1.row_closed then begin
     match row2.row_closed, r2 with
     | false, _ -> raise (Moregen [Variant (Openness Second)])
-    | _, ((lb, _) :: _) -> raise (Moregen [Variant (Missing (First, lb))])
-    | _, _ -> ()
+    | _, _ :: _ -> raise (Moregen [Variant (No_tags (First, r2))])
+    | _, [] -> ()
   end;
   begin match rm1.desc, rm2.desc with
     Tunivar _, Tunivar _ ->
@@ -3606,19 +3606,19 @@ and eqtype_row rename type_pairs subst env row1 row2 =
   then raise (Equality [Variant (Openness (if row2.row_closed then First else Second))]);
   if not row1.row_closed then begin
     match r1, r2 with
-    | (lb1, _)::_, _ -> raise (Equality [Variant (Missing (Second, lb1))])
-    | _, (lb2, _)::_ -> raise (Equality [Variant (Missing (First, lb2))])
+    | _::_, _ -> raise (Equality [Variant (No_tags (Second, r1))])
+    | _, _::_ -> raise (Equality [Variant (No_tags (First,  r2))])
     | _, _ -> ()
   end;
   begin
     match filter_row_fields false r1 with
     | [] -> ();
-    | (lb, _) :: _ -> raise (Equality [Variant (Missing (Second, lb))])
+    | _ :: _ as r1 -> raise (Equality [Variant (No_tags (Second, r1))])
   end;
   begin
     match filter_row_fields false r2 with
     | [] -> ()
-    | (lb, _) :: _ -> raise (Equality [Variant (Missing (First, lb))])
+    | _ :: _ as r2 -> raise (Equality [Variant (No_tags (First, r2))])
   end;
   if not (static_row row1) then
     eqtype rename type_pairs subst env row1.row_more row2.row_more;
