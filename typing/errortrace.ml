@@ -82,11 +82,9 @@ type ('a, 'variety) elt =
   | Variant :  'variety variant -> ('a, 'variety) elt
   | Obj :  'variety obj -> ('a, 'variety) elt
   | Escape : 'a escape -> ('a, _) elt
-  | Incompatible_fields : { name:string; diff: type_expr diff } -> ('a, _) elt
+  | Incompatible_fields : { name:string; diff: type_expr diff } -> ('a, _) elt (* Could move into [obj] *)
   (* Unification & Moregen; included in Equality for simplicity *)
   | Rec_occur : type_expr * type_expr -> ('a, _) elt
-  (* ASZ: Either [Rec_occur] doesn't belong in Moregen or it'll just be easier to put it in all three *)
-(* ASZ: Why isn't [Incompatible_fields] in [Obj]?  Meh, doesn't matter. *)
 
 type 'variety t =
   (desc, 'variety) elt list
