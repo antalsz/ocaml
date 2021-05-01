@@ -185,7 +185,7 @@ val report_unification_error :
   unit
 
 val report_equality_error :
-  formatter -> Env.t ->
+  formatter -> Errortrace.equality_subst -> Env.t ->
   Errortrace.comparison Errortrace.t ->
   (formatter -> unit) -> (formatter -> unit) ->
   unit

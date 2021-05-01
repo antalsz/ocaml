@@ -254,7 +254,7 @@ Error: Signature mismatch:
          type ('a, 'b) t = Foo of 'a
        Constructors do not match:
          Foo of 'b
-       is not compatible with:
+       is not the same as:
          Foo of 'a
-       The types are not equal.
+       The type 'b is not equal to the type 'a
 |}];;

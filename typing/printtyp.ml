@@ -2286,8 +2286,18 @@ let warn_on_missing_defs env ppf = function
       warn_on_missing_def env ppf te1;
       warn_on_missing_def env ppf te2
 
-let error trace_format env tr txt1 ppf txt2 ty_expect_explanation =
+let rec match_names_for_substs = function
+  | [] -> ()
+  | ({desc = Tvar _} as l, ({desc = Tvar _} as r)) :: tl ->
+    match_names_for_substs tl;
+    let name = name_of_type new_name l in
+    names := (r, name) :: !names
+  | _ :: tl -> match_names_for_substs tl
+
+(* [subst] comes out of equality, and is [[]] otherwise *)
+let error trace_format subst env tr txt1 ppf txt2 ty_expect_explanation =
   reset ();
+  match_names_for_substs subst;
   let tr = prepare_trace (fun t t' -> t, hide_variant_name t') tr in
   let mis = mismatch txt1 env tr in
   match tr with
@@ -2316,19 +2326,19 @@ let error trace_format env tr txt1 ppf txt2 ty_expect_explanation =
       print_labels := true;
       raise exn
 
-let report_error trace_format ppf env tr
+let report_error trace_format ppf subst env tr
       ?(type_expected_explanation = fun _ -> ())
       txt1 txt2 =
-  wrap_printing_env env (fun () -> error trace_format env tr txt1 ppf txt2
+  wrap_printing_env env (fun () -> error trace_format subst env tr txt1 ppf txt2
                                      type_expected_explanation)
     ~error:true
 
-let report_unification_error =
-  report_error Unification
-let report_equality_error =
-  report_error Equality ?type_expected_explanation:None
-let report_moregen_error =
-  report_error Moregen ?type_expected_explanation:None
+let report_unification_error ppf =
+  report_error Unification ppf []
+let report_equality_error ppf subst =
+  report_error Equality ppf subst ?type_expected_explanation:None
+let report_moregen_error ppf =
+  report_error Moregen ppf [] ?type_expected_explanation:None
 
 module Subtype = struct
   (* There's a frustrating amount of code duplication between this module and

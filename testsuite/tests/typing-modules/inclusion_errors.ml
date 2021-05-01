@@ -138,9 +138,9 @@ Error: Signature mismatch:
          type t = Foo of int * float
        Constructors do not match:
          Foo of (int * int) * float
-       is not compatible with:
+       is not the same as:
          Foo of int * float
-       The types are not equal.
+       The type int * int is not equal to the type int
 |}];;
 
 module M : sig
@@ -251,9 +251,11 @@ Error: Signature mismatch:
          type t = Foo of [ `Bar of string | `Foo of string ]
        Constructors do not match:
          Foo of [ `Bar of string ]
-       is not compatible with:
+       is not the same as:
          Foo of [ `Bar of string | `Foo of string ]
-       The types are not equal.
+       The type [ `Bar of string ] is not equal to the type
+         [ `Bar of string | `Foo of string ]
+       The first variant type does not allow tag(s) `Foo
 |}];;
 
 module M : sig

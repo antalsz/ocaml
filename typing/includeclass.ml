@@ -49,9 +49,9 @@ let rec hide_params = function
   | cty -> cty
 *)
 
-let report_error_for = function
-  | CM_Equality -> Printtyp.report_equality_error
-  | CM_Moregen  -> Printtyp.report_moregen_error
+let report_comparison_error ppf = function
+  | Errortrace.Equality_error {subst; env; trace} -> Printtyp.report_equality_error ppf subst env trace
+  | Errortrace.Moregen_error  {env; trace}        -> Printtyp.report_moregen_error  ppf       env trace
 
 let include_err ppf =
   function
@@ -60,8 +60,8 @@ let include_err ppf =
   | CM_Parameter_arity_mismatch _ ->
       fprintf ppf
         "The classes do not have the same number of type parameters"
-  | CM_Type_parameter_mismatch (env, trace) ->
-      Printtyp.report_equality_error ppf env trace
+  | CM_Type_parameter_mismatch {subst; env; trace} ->
+      Printtyp.report_equality_error ppf subst env trace
         (function ppf ->
           fprintf ppf "A type parameter has type")
         (function ppf ->
@@ -73,20 +73,20 @@ let include_err ppf =
           Printtyp.class_type cty1
           "is not matched by the class type"
           Printtyp.class_type cty2)
-  | CM_Parameter_mismatch (env, trace) ->
+  | CM_Parameter_mismatch {env; trace} ->
       Printtyp.report_moregen_error ppf env trace
         (function ppf ->
           fprintf ppf "A parameter has type")
         (function ppf ->
           fprintf ppf "but is expected to have type")
-  | CM_Val_type_mismatch (trace_type, lab, env, trace) ->
-      report_error_for trace_type ppf env trace
+  | CM_Val_type_mismatch (lab, err) ->
+      report_comparison_error ppf err
         (function ppf ->
           fprintf ppf "The instance variable %s@ has type" lab)
         (function ppf ->
           fprintf ppf "but is expected to have type")
-  | CM_Meth_type_mismatch (trace_type, lab, env, trace) ->
-      report_error_for trace_type  ppf env trace
+  | CM_Meth_type_mismatch (lab, err) ->
+      report_comparison_error ppf err
         (function ppf ->
           fprintf ppf "The method %s@ has type" lab)
         (function ppf ->

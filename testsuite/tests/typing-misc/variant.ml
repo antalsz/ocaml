@@ -98,9 +98,9 @@ Line 1, characters 0-32:
 Error: This variant or record definition does not match that of type d
        Constructors do not match:
          X of int
-       is not compatible with:
+       is not the same as:
          X of float
-       The types are not equal.
+       The type int is not equal to the type float
 |}]
 
 type unboxed = d = X of float [@@unboxed]
@@ -143,7 +143,7 @@ Error: Signature mismatch:
          type t = Foo of int
        Constructors do not match:
          Foo : int -> t
-       is not compatible with:
+       is not the same as:
          Foo of int
        The first has explicit return type and the second doesn't.
 |}]

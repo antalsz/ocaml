@@ -58,7 +58,8 @@ open Local_store
 (**** Errors ****)
 
 exception Unify of unification Errortrace.t
-exception Equality of comparison Errortrace.t
+exception Equality_core of comparison Errortrace.t
+exception Equality of equality_subst * comparison Errortrace.t
 exception Moregen of comparison Errortrace.t
 exception Subtype of Errortrace.Subtype.t * unification Errortrace.t
 
@@ -76,9 +77,9 @@ let raise_trace_for
       (tr_exn : variant trace_exn)
       (tr     : variant Errortrace.t) : 'a =
   match tr_exn with
-  | Unify    -> raise (Unify    tr)
-  | Equality -> raise (Equality tr)
-  | Moregen  -> raise (Moregen  tr)
+  | Unify    -> raise (Unify         tr)
+  | Equality -> raise (Equality_core tr)
+  | Moregen  -> raise (Moregen       tr)
 
 (* Uses of this function are a bit suspicious, as we usually want to maintain
    trace information; sometimes it makes sense, however, since we're maintaining
@@ -3699,7 +3700,7 @@ let rec eqtype rename type_pairs subst env t1 t2 =
           | (_, _) ->
               raise_unexplained_for Equality
         end
-  with Equality trace ->  raise ( Equality (Errortrace.diff t1 t2 :: trace) )
+  with Equality_core trace ->  raise ( Equality(!subst, Errortrace.diff t1 t2 :: trace) )
 
 and eqtype_list rename type_pairs subst env tl1 tl2 =
   if List.length tl1 <> List.length tl2 then
@@ -3730,8 +3731,9 @@ and eqtype_fields rename type_pairs subst env ty1 ty2 =
            eqtype_kind k1 k2;
            try
              eqtype rename type_pairs subst env t1 t2;
-           with Equality trace ->
-             raise (Equality (Errortrace.incompatible_fields n t1 t2 :: trace)))
+           with Equality_core trace ->
+             raise (Equality(!subst,
+                             Errortrace.incompatible_fields n t1 t2 :: trace)))
         pairs
 
 and eqtype_kind k1 k2 =
@@ -3740,7 +3742,7 @@ and eqtype_kind k1 k2 =
   match k1, k2 with
   | (Fvar _, Fvar _)
   | (Fpresent, Fpresent) -> ()
-  | _                    -> raise_unexplained_for Equality
+  | _                    -> assert false
 
 and eqtype_row rename type_pairs subst env row1 row2 =
   (* Try expansion, needed when called from Includecore.type_manifest *)
@@ -3797,8 +3799,8 @@ and eqtype_row rename type_pairs subst env row1 row2 =
          | Rpresent _, Reither _ -> raise_unexplained_for Equality
          | Reither _, Rpresent _ -> raise_unexplained_for Equality
          | _ -> raise_unexplained_for Equality
-       with Equality err ->
-         raise (Equality (Variant (Incompatible_types_for l):: err)))
+       with Equality_core err ->
+         raise (Equality(!subst, Variant (Incompatible_types_for l):: err)))
     pairs
 
 (* Must empty univar_pairs first *)
@@ -3819,12 +3821,12 @@ let equal env rename tyl1 tyl2 =
 let is_equal env rename tyl1 tyl2 =
   match equal env rename tyl1 tyl2 with
   | () -> true
-  | exception Equality _ -> false
+  | exception Equality(_,_) -> false
 
 let rec equal_private env params1 ty1 params2 ty2 =
   match equal env true (params1 @ [ty1]) (params2 @ [ty2]) with
   | () -> ()
-  | exception (Equality _ as err) ->
+  | exception (Equality(_,_) as err) ->
       match try_expand_safe_opt env (expand_head env ty1) with
       | ty1' -> equal_private env params1 ty1' params2 ty2
       | exception Cannot_expand -> raise err
@@ -3833,20 +3835,14 @@ let rec equal_private env params1 ty1 params2 ty2 =
                           (*  Class type matching  *)
                           (*************************)
 
-type class_match_failure_trace_type =
-  | CM_Equality
-  | CM_Moregen
-
 type class_match_failure =
     CM_Virtual_class
   | CM_Parameter_arity_mismatch of int * int
-  | CM_Type_parameter_mismatch of Env.t * comparison Errortrace.t (* Equality *)
+  | CM_Type_parameter_mismatch of equality_error
   | CM_Class_type_mismatch of Env.t * class_type * class_type
-  | CM_Parameter_mismatch of Env.t * comparison Errortrace.t (* Moregen *)
-  | CM_Val_type_mismatch of
-      class_match_failure_trace_type * string * Env.t * comparison Errortrace.t
-  | CM_Meth_type_mismatch of
-      class_match_failure_trace_type * string * Env.t * comparison Errortrace.t
+  | CM_Parameter_mismatch of moregen_error
+  | CM_Val_type_mismatch of string * comparison_error
+  | CM_Meth_type_mismatch of string * comparison_error
   | CM_Non_mutable_value of string
   | CM_Non_concrete_value of string
   | CM_Missing_value of string
@@ -3868,7 +3864,8 @@ let rec moregen_clty trace type_pairs env cty1 cty2 =
         moregen_clty true type_pairs env cty1 cty2
     | Cty_arrow (l1, ty1, cty1'), Cty_arrow (l2, ty2, cty2') when l1 = l2 ->
         begin try moregen true type_pairs env ty1 ty2 with Moregen trace ->
-          raise (Failure [CM_Parameter_mismatch (env, expand_trace env trace)])
+        raise (Failure [
+          CM_Parameter_mismatch {env; trace = expand_trace env trace}])
         end;
         moregen_clty false type_pairs env cty1' cty2'
     | Cty_signature sign1, Cty_signature sign2 ->
@@ -3882,7 +3879,7 @@ let rec moregen_clty trace type_pairs env cty1 cty2 =
             try moregen true type_pairs env t1 t2 with Moregen trace ->
               raise (Failure [
                 CM_Meth_type_mismatch
-                  (CM_Moregen, lab, env, expand_trace env trace)]))
+                  (lab, Moregen_error {env; trace = expand_trace env trace})]))
           pairs;
       Vars.iter
         (fun lab (_mut, _v, ty) ->
@@ -3890,7 +3887,7 @@ let rec moregen_clty trace type_pairs env cty1 cty2 =
            try moregen true type_pairs env ty' ty with Moregen trace ->
              raise (Failure [
                CM_Val_type_mismatch
-                 (CM_Moregen, lab, env, expand_trace env trace)]))
+                 (lab, Moregen_error {env; trace = expand_trace env trace})]))
         sign2.csig_vars
   | _ ->
       raise (Failure [])
@@ -4005,17 +4002,19 @@ let equal_clsig trace type_pairs subst env sign1 sign2 =
     List.iter
       (fun (lab, _k1, t1, _k2, t2) ->
          begin try eqtype true type_pairs subst env t1 t2 with
-           Equality trace ->
-           raise (Failure [CM_Meth_type_mismatch
-                             (CM_Equality, lab, env, expand_trace env trace)])
+           Equality(subst, trace) ->
+           raise (Failure
+                    [CM_Meth_type_mismatch
+                       (lab, Equality_error {subst; env; trace = expand_trace env trace})])
          end)
       pairs;
     Vars.iter
       (fun lab (_, _, ty) ->
          let (_, _, ty') = Vars.find lab sign1.csig_vars in
-         try eqtype true type_pairs subst env ty' ty with Equality trace ->
-           raise (Failure [CM_Val_type_mismatch
-                             (CM_Equality, lab, env, expand_trace env trace)]))
+         try eqtype true type_pairs subst env ty' ty with Equality(subst, trace) ->
+           raise (Failure
+                    [CM_Val_type_mismatch
+                       (lab, Equality_error {subst; env; trace = expand_trace env trace})]))
       sign2.csig_vars
   with
     Failure error when trace ->
@@ -4104,9 +4103,9 @@ let match_class_declarations env patt_params patt_type subj_params subj_type =
         if lp  <> ls then
           raise (Failure [CM_Parameter_arity_mismatch (lp, ls)]);
         List.iter2 (fun p s ->
-          try eqtype true type_pairs subst env p s with Equality trace ->
+          try eqtype true type_pairs subst env p s with Equality(subst, trace) ->
             raise (Failure [CM_Type_parameter_mismatch
-                               (env, expand_trace env trace)]))
+                              {subst; env; trace = expand_trace env trace}]))
           patt_params subj_params;
      (* old code: equal_clty false type_pairs subst env patt_type subj_type; *)
         equal_clsig false type_pairs subst env sign1 sign2;
@@ -4654,13 +4653,8 @@ let rec normalize_type_rec visited ty =
               let tyl' =
                 List.fold_left
                   (fun tyl ty ->
-                    if List.exists
-                          (fun ty' ->
-                             match equal Env.empty false [ty] [ty'] with
-                             | () -> true
-                             | exception Equality _ -> false)
-                          tyl
-                     then tyl else ty::tyl)
+                    if List.exists (fun ty' -> is_equal Env.empty false [ty] [ty']) tyl
+                    then tyl else ty::tyl)
                   [ty] tyl
               in
               if f != f0 || List.length tyl' < List.length tyl then

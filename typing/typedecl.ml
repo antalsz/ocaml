@@ -585,8 +585,8 @@ let check_coherence env loc dpath decl =
               then Some Includecore.Arity
               else begin
                 match Ctype.equal env false args decl.type_params with
-                | exception Ctype.Equality trace ->
-                    Some (Includecore.Constraint (env, trace))
+                | exception Ctype.Equality(subst,trace) ->
+                    Some (Includecore.Constraint {subst; env; trace})
                 | () ->
                     Includecore.type_declarations ~loc ~equality:true env
                       ~mark:true

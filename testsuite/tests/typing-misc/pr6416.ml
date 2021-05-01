@@ -52,9 +52,9 @@ Error: Signature mismatch:
          type u = A of t/2
        Constructors do not match:
          A of t/1
-       is not compatible with:
+       is not the same as:
          A of t/2
-       The types are not equal.
+       The type t/1 is not equal to the type t/2
        Line 4, characters 9-19:
          Definition of type t/1
        Line 2, characters 2-11:
@@ -121,9 +121,9 @@ Error: Signature mismatch:
          type t = A of T/2.t
        Constructors do not match:
          A of T/1.t
-       is not compatible with:
+       is not the same as:
          A of T/2.t
-       The types are not equal.
+       The type T/1.t is not equal to the type T/2.t
        Line 5, characters 6-34:
          Definition of module T/1
        Line 2, characters 2-30:
@@ -308,8 +308,7 @@ Error: Signature mismatch:
          class type c = object method m : t/2 end
        does not match
          class type c = object method m : t/1 end
-       The method m has type t/2 but is expected to have type t/1
-       Type t/2 is not equal to type t/1 = K.t
+       The method m has type t/2 but is expected to have type t/1 = K.t
        Line 12, characters 4-10:
          Definition of type t/1
        Line 9, characters 2-8:

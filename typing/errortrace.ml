@@ -108,6 +108,16 @@ type ('a, 'variety) elt =
 type 'variety t =
   (desc, 'variety) elt list
 
+type equality_subst = (type_expr * type_expr) list
+
+type unification_error = { trace : unification t }
+type equality_error    = { trace : comparison t; env : Env.t; subst : equality_subst;  }
+type moregen_error     = { trace : comparison t; env : Env.t }
+
+type comparison_error =
+  | Equality_error of equality_error
+  | Moregen_error  of moregen_error
+
 let diff got expected = Diff (map_diff short { got; expected })
 
 let map_elt (type variety) f : ('a, variety) elt -> ('b, variety) elt = function

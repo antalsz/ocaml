@@ -638,16 +638,19 @@ typing/envaux.cmi : \
 typing/errortrace.cmo : \
     typing/types.cmi \
     typing/path.cmi \
+    typing/env.cmi \
     parsing/asttypes.cmi \
     typing/errortrace.cmi
 typing/errortrace.cmx : \
     typing/types.cmx \
     typing/path.cmx \
+    typing/env.cmx \
     parsing/asttypes.cmi \
     typing/errortrace.cmi
 typing/errortrace.cmi : \
     typing/types.cmi \
     typing/path.cmi \
+    typing/env.cmi \
     parsing/asttypes.cmi
 typing/ident.cmo : \
     utils/misc.cmi \
@@ -667,6 +670,7 @@ typing/includeclass.cmo : \
     typing/types.cmi \
     typing/printtyp.cmi \
     typing/path.cmi \
+    typing/errortrace.cmi \
     typing/ctype.cmi \
     parsing/builtin_attributes.cmi \
     typing/includeclass.cmi
@@ -674,6 +678,7 @@ typing/includeclass.cmx : \
     typing/types.cmx \
     typing/printtyp.cmx \
     typing/path.cmx \
+    typing/errortrace.cmx \
     typing/ctype.cmx \
     parsing/builtin_attributes.cmx \
     typing/includeclass.cmi
