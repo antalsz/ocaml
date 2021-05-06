@@ -177,7 +177,7 @@ let filter_arrow ty =
 
 let rec extract_last_arrow desc =
   match filter_arrow desc with
-  | None -> raise (Ctype.Unify [])
+  | None -> raise (Ctype.Unify {trace=[]}) (* ASZ: This seems a mite suspicious *)
   | Some (_, r as res) ->
       try extract_last_arrow r
       with Ctype.Unify _ -> res
@@ -233,7 +233,7 @@ let match_generic_printer_type desc path args printer_type =
   Ctype.end_def();
   Ctype.generalize ty_expected;
   if not (Ctype.all_distinct_vars !toplevel_env args) then
-    raise (Ctype.Unify []);
+    raise (Ctype.Unify {trace=[]}); (* ASZ: This seems a mite suspicious *)
   (ty_expected, Some (path, ty_args))
 
 let match_printer_type ppf desc =

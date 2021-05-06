@@ -49,10 +49,6 @@ let rec hide_params = function
   | cty -> cty
 *)
 
-let report_comparison_error ppf = function
-  | Errortrace.Equality_error {subst; env; trace} -> Printtyp.report_equality_error ppf subst env trace
-  | Errortrace.Moregen_error  {env; trace}        -> Printtyp.report_moregen_error  ppf       env trace
-
 let include_err ppf =
   function
   | CM_Virtual_class ->
@@ -60,8 +56,8 @@ let include_err ppf =
   | CM_Parameter_arity_mismatch _ ->
       fprintf ppf
         "The classes do not have the same number of type parameters"
-  | CM_Type_parameter_mismatch {subst; env; trace} ->
-      Printtyp.report_equality_error ppf subst env trace
+  | CM_Type_parameter_mismatch (env, eq_err) ->
+      Printtyp.report_equality_error ppf env eq_err
         (function ppf ->
           fprintf ppf "A type parameter has type")
         (function ppf ->
@@ -73,20 +69,20 @@ let include_err ppf =
           Printtyp.class_type cty1
           "is not matched by the class type"
           Printtyp.class_type cty2)
-  | CM_Parameter_mismatch {env; trace} ->
-      Printtyp.report_moregen_error ppf env trace
+  | CM_Parameter_mismatch (env, err) ->
+      Printtyp.report_moregen_error ppf env err
         (function ppf ->
           fprintf ppf "A parameter has type")
         (function ppf ->
           fprintf ppf "but is expected to have type")
-  | CM_Val_type_mismatch (lab, err) ->
-      report_comparison_error ppf err
+  | CM_Val_type_mismatch (lab, env, err) ->
+      Printtyp.report_comparison_error ppf env err
         (function ppf ->
           fprintf ppf "The instance variable %s@ has type" lab)
         (function ppf ->
           fprintf ppf "but is expected to have type")
-  | CM_Meth_type_mismatch (lab, err) ->
-      report_comparison_error ppf err
+  | CM_Meth_type_mismatch (lab, env, err) ->
+      Printtyp.report_comparison_error ppf env err
         (function ppf ->
           fprintf ppf "The method %s@ has type" lab)
         (function ppf ->

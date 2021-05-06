@@ -66,6 +66,7 @@ type 'variety variant =
   | Fixed_row :
       position * fixed_row_case * fixed_explanation -> unification variant
   (* Equality & Moregen *)
+  | Incompatible_presence_for : string -> comparison variant
   | Openness : position (* Always [Second] for Moregen *) -> comparison variant
 
 type 'variety obj =
@@ -88,16 +89,6 @@ type ('a, 'variety) elt =
 type 'variety t =
   (desc, 'variety) elt list
 
-type equality_subst = (type_expr * type_expr) list
-
-type unification_error = { trace : unification t }
-type equality_error    = { trace : comparison t; env : Env.t; subst : equality_subst;  }
-type moregen_error     = { trace : comparison t; env : Env.t }
-
-type comparison_error =
-  | Equality_error of equality_error
-  | Moregen_error  of moregen_error
-
 val diff : type_expr -> type_expr -> (desc, _) elt
 
 (** [flatten f trace] flattens all elements of type {!desc} in
@@ -111,6 +102,31 @@ val map : ('a -> 'b) -> ('a, 'variety) elt list -> ('b, 'variety) elt list
 val incompatible_fields : string -> type_expr -> type_expr -> (desc, _) elt
 
 val swap_trace : 'variety t -> 'variety t
+
+(* The traces (['variety t]) are the core error types.  However, we bundle them
+   up into three "top-level" error types, which are used elsewhere:
+   [unification_error], [equality_error], and [moregen_error].  In the case of
+   [equality_error], this has to bundle in extra information; in general, it
+   distinguishes the three types of errors and allows us to distinguish traces
+   that are being built (or processed) from those that are complete and have
+   become the final error. *)
+
+type unification_error = { trace : unification t } [@@unboxed]
+
+type equality_error =
+  { trace : comparison t;
+    subst : (type_expr * type_expr) list }
+
+type moregen_error = { trace : comparison t } [@@unboxed]
+
+(* Lift [swap_trace] to [unification_error] *)
+val swap_unification_error : unification_error -> unification_error
+
+(* Wraps up the two different kinds of [comparison] errors in one type *)
+type comparison_error =
+  | Equality_error of equality_error
+  | Moregen_error  of moregen_error
+
 
 module Subtype : sig
   type 'a elt =

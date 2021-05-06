@@ -85,6 +85,7 @@ type 'variety variant =
   | Fixed_row :
       position * fixed_row_case * fixed_explanation -> unification variant
   (* Equality & Moregen *)
+  | Incompatible_presence_for : string -> comparison variant
   | Openness : position (* Always [Second] for Moregen *) -> comparison variant
 
 type 'variety obj =
@@ -107,16 +108,6 @@ type ('a, 'variety) elt =
 
 type 'variety t =
   (desc, 'variety) elt list
-
-type equality_subst = (type_expr * type_expr) list
-
-type unification_error = { trace : unification t }
-type equality_error    = { trace : comparison t; env : Env.t; subst : equality_subst;  }
-type moregen_error     = { trace : comparison t; env : Env.t }
-
-type comparison_error =
-  | Equality_error of equality_error
-  | Moregen_error  of moregen_error
 
 let diff got expected = Diff (map_diff short { got; expected })
 
@@ -150,6 +141,21 @@ let swap_elt (type variety) : ('a, variety) elt -> ('a, variety) elt = function
   | x -> x
 
 let swap_trace e = List.map swap_elt e
+
+type unification_error = { trace : unification t } [@@unboxed]
+
+type equality_error =
+  { trace : comparison t;
+    subst : (type_expr * type_expr) list }
+
+type moregen_error = { trace : comparison t } [@@unboxed]
+
+type comparison_error =
+  | Equality_error of equality_error
+  | Moregen_error  of moregen_error
+
+let swap_unification_error ({trace} : unification_error) =
+  ({trace = swap_trace trace} : unification_error)
 
 module Subtype = struct
   type 'a elt =

@@ -67,7 +67,7 @@ type extension_constructor_mismatch =
                             * constructor_mismatch
 
 type private_variant_mismatch =
-  | Openness
+  | Only_outer_closed
   | Missing of position * string
   | Presence of string
   | Incompatible_types_for of string
@@ -110,7 +110,17 @@ val class_types:
         Env.t -> class_type -> class_type -> bool
 *)
 
-val report_type_mismatch:
-    string -> string -> string -> Format.formatter -> type_mismatch -> unit
-val report_extension_constructor_mismatch: string -> string -> string ->
+val report_value_mismatch :
+  string -> string ->
+  Env.t ->
+  Format.formatter -> value_mismatch -> unit
+
+val report_type_mismatch :
+  string -> string -> string ->
+  Env.t ->
+  Format.formatter -> type_mismatch -> unit
+
+val report_extension_constructor_mismatch :
+  string -> string -> string ->
+  Env.t ->
   Format.formatter -> extension_constructor_mismatch -> unit

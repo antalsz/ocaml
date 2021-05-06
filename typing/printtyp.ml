@@ -2166,10 +2166,12 @@ let explain_variant (type variety) : variety Errortrace.variant -> _ = function
       (* this case never happens *)
       None
   (* Equality & Moregen *)
+  | Errortrace.Incompatible_presence_for s ->
+      Some(dprintf "@,Presences for tag `%s are incompatible [ASZ]" s)
   | Errortrace.Openness pos ->
-    Some(dprintf "@,The %a variant type is open and the %a is not"
-           Errortrace.print_pos pos
-           Errortrace.print_pos (Errortrace.swap_position pos))
+      Some(dprintf "@,The %a variant type is open and the %a is not"
+             Errortrace.print_pos pos
+             Errortrace.print_pos (Errortrace.swap_position pos))
 
 let explain_escape pre = function
   | Errortrace.Univ u -> Some(
@@ -2326,19 +2328,24 @@ let error trace_format subst env tr txt1 ppf txt2 ty_expect_explanation =
       print_labels := true;
       raise exn
 
-let report_error trace_format ppf subst env tr
+let report_error trace_format ppf env tr
+      ?(subst = [])
       ?(type_expected_explanation = fun _ -> ())
       txt1 txt2 =
   wrap_printing_env env (fun () -> error trace_format subst env tr txt1 ppf txt2
                                      type_expected_explanation)
     ~error:true
 
-let report_unification_error ppf =
-  report_error Unification ppf []
-let report_equality_error ppf subst =
-  report_error Equality ppf subst ?type_expected_explanation:None
-let report_moregen_error ppf =
-  report_error Moregen ppf [] ?type_expected_explanation:None
+let report_unification_error ppf env ({trace} : Errortrace.unification_error) =
+  report_error Unification ppf env ?subst:None trace
+let report_equality_error ppf env ({subst; trace} : Errortrace.equality_error) =
+  report_error Equality ppf env ~subst ?type_expected_explanation:None trace
+let report_moregen_error ppf env ({trace} : Errortrace.moregen_error) =
+  report_error Moregen ppf env ?subst:None ?type_expected_explanation:None trace
+
+let report_comparison_error ppf env = function
+  | Errortrace.Equality_error error -> report_equality_error ppf env error
+  | Errortrace.Moregen_error  error -> report_moregen_error  ppf env error
 
 module Subtype = struct
   (* There's a frustrating amount of code duplication between this module and
@@ -2395,7 +2402,7 @@ module Subtype = struct
     | Errortrace.Subtype.Diff diff ->
         Some (Errortrace.map_diff trees_of_type_expansion diff)
 
-  let report_error ppf env tr1 txt1 tr2 =
+  let report_error ppf env tr1 txt1 ({trace=tr2} : Errortrace.unification_error) =
     wrap_printing_env ~error:true env (fun () ->
       reset ();
       let tr1 =
