@@ -3887,7 +3887,9 @@ let eqtype rename type_pairs subst env t1 t2 =
 let equal env rename tyl1 tyl2 =
   let subst = ref [] in
   try eqtype_list rename (TypePairs.create 11) subst env tyl1 tyl2
-  with Equality_trace trace -> raise (Equality {subst = !subst; trace})
+  with Equality_trace trace ->
+    normalize_subst subst;
+    raise (Equality {subst = !subst; trace})
 
 let is_equal env rename tyl1 tyl2 =
   match equal env rename tyl1 tyl2 with
@@ -4075,12 +4077,13 @@ let equal_clsig trace type_pairs subst env sign1 sign2 =
       (fun (lab, _k1, t1, _k2, t2) ->
          begin try eqtype true type_pairs subst env t1 t2 with
            Equality_trace trace ->
-           raise (Failure
-                    [CM_Meth_type_mismatch
-                       (lab,
-                        env,
-                        Equality_error {subst = !subst;
-                                        trace = expand_trace env trace})])
+             normalize_subst subst;
+             raise (Failure
+                      [CM_Meth_type_mismatch
+                         (lab,
+                          env,
+                          Equality_error {subst = !subst;
+                                          trace = expand_trace env trace})])
          end)
       pairs;
     Vars.iter
@@ -4088,6 +4091,7 @@ let equal_clsig trace type_pairs subst env sign1 sign2 =
          let (_, _, ty') = Vars.find lab sign1.csig_vars in
          try eqtype true type_pairs subst env ty' ty
          with Equality_trace trace ->
+           normalize_subst subst;
            raise (Failure
                     [CM_Val_type_mismatch
                        (lab,
@@ -4183,6 +4187,7 @@ let match_class_declarations env patt_params patt_type subj_params subj_type =
           raise (Failure [CM_Parameter_arity_mismatch (lp, ls)]);
         List.iter2 (fun p s ->
           try eqtype true type_pairs subst env p s with Equality_trace trace ->
+            normalize_subst subst;
             raise (Failure
                      [CM_Type_parameter_mismatch
                         (env,
