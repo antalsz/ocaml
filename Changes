@@ -278,6 +278,10 @@ Working version
 - #10232: Warning for unused record fields.
   (Leo White, review by Florian Angeletti)
 
+- #10407: Produce more detailed error messages that contain full error
+  #traces when module inclusion fails.
+  (Antal Spector-Zabusky, NOT YET REVIEWED)
+
 ### Internal/compiler-libs changes:
 
 - #9243, simplify parser rules for array indexing operations
