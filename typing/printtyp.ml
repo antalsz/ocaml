@@ -2167,7 +2167,8 @@ let explain_variant (type variety) : variety Errortrace.variant -> _ = function
       None
   (* Equality & Moregen *)
   | Errortrace.Incompatible_presence_for s ->
-      Some(dprintf "@,Presences for tag `%s are incompatible [ASZ]" s)
+      Some(dprintf "@,The tag `%s is not guaranteed to be present in both types"
+             s)
   | Errortrace.Openness pos ->
       Some(dprintf "@,The %a variant type is open and the %a is not"
              Errortrace.print_pos pos
