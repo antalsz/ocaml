@@ -113,7 +113,6 @@ val tree_of_type_scheme: type_expr -> out_type
 val type_sch : formatter -> type_expr -> unit
 val type_scheme: formatter -> type_expr -> unit
 (* Maxence *)
-val reset_names: unit -> unit
 val type_scheme_max: ?b_reset_names: bool ->
         formatter -> type_expr -> unit
 (* End Maxence *)

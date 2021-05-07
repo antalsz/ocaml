@@ -107,7 +107,7 @@ Error: Signature mismatch:
          class ['a] c : object  end
        does not match
          class ['a] c : object constraint 'a = int end
-       A type parameter has type 'a0 but is expected to have type int
+       A type parameter has type 'a but is expected to have type int
 |}]
 
 module M: sig
