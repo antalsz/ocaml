@@ -85,7 +85,7 @@ type 'variety variant =
   | Fixed_row :
       position * fixed_row_case * fixed_explanation -> unification variant
   (* Equality & Moregen *)
-  | Incompatible_presence_for : string -> comparison variant
+  | Presence_not_guaranteed_for : position * string -> comparison variant
   | Openness : position (* Always [Second] for Moregen *) -> comparison variant
 
 type 'variety obj =

@@ -975,7 +975,8 @@ Error: Signature mismatch:
          val f : [< `Bar | `Baz | `Foo ] -> unit
        The type [> `Bar | `Foo ] -> unit is not compatible with the type
          [< `Bar | `Baz | `Foo ] -> unit
-       The tag `Foo is not guaranteed to be present in both types
+       The tag `Foo is guaranteed to be present in the first variant type,
+       but not in the second
 |}];;
 
 (******************************* Type manifests *******************************)
@@ -1178,7 +1179,8 @@ Error: Signature mismatch:
        is not included in
          type t = private [< `A | `B ]
        The type [ `A | `B ] is not equal to the type [< `A | `B ]
-       The tag `B is not guaranteed to be present in both types
+       The tag `B is guaranteed to be present in the first variant type,
+       but not in the second
 |}];;
 
 module M : sig

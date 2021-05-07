@@ -3539,10 +3539,10 @@ and moregen_row inst_nongen type_pairs env row1 row2 =
          | Rpresent None, Rpresent (Some _) ->
              raise_for Moregen (Variant (Incompatible_types_for l))
          (* Mismatched presence *)
-         | Rpresent _, Reither _
          | Reither _, Rpresent _ ->
-             (* ASZ: "Foo is guaranteed to be present in %s type but not in the %s" *)
-             raise_for Moregen (Variant (Incompatible_presence_for l))
+             raise_for Moregen (Variant (Presence_not_guaranteed_for (First, l)))
+         | Rpresent _, Reither _ ->
+             raise_for Moregen (Variant (Presence_not_guaranteed_for (Second, l)))
          (* Missing tags *)
          | Rabsent, ((Rpresent _ | Reither _) as r) ->
              raise_for Moregen (Variant (No_tags (First, [l, r])))
@@ -3862,9 +3862,12 @@ and eqtype_row rename type_pairs subst env row1 row2 =
        | Reither _, Reither _ ->
            raise_for Equality (Variant (Incompatible_types_for l))
        (* Mismatched presence *)
-       | Rpresent _, Reither _
        | Reither _, Rpresent _ ->
-           raise_for Equality (Variant (Incompatible_presence_for l))
+           raise_for Equality
+             (Variant (Presence_not_guaranteed_for (First, l)))
+       | Rpresent _, Reither _ ->
+           raise_for Equality
+             (Variant (Presence_not_guaranteed_for (Second, l)))
        (* Missing tags *)
        | Rabsent, ((Rpresent _ | Reither _) as r) ->
            raise_for Equality (Variant (No_tags (First, [l, r])))

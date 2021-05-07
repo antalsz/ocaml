@@ -2229,9 +2229,14 @@ let explain_variant (type variety) : variety Errortrace.variant -> _ = function
       (* this case never happens *)
       None
   (* Equality & Moregen *)
-  | Errortrace.Incompatible_presence_for s ->
-      Some(dprintf "@,The tag `%s is not guaranteed to be present in both types"
-             s)
+  | Errortrace.Presence_not_guaranteed_for (pos, s) -> Some(
+      dprintf
+        "@,@[The tag `%s is guaranteed to be present in the %a variant type,\
+         @ but not in the %a@]"
+        s
+        Errortrace.print_pos (Errortrace.swap_position pos)
+        Errortrace.print_pos pos
+    )
   | Errortrace.Openness pos ->
       Some(dprintf "@,The %a variant type is open and the %a is not"
              Errortrace.print_pos pos
