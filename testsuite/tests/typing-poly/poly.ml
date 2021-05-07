@@ -1577,7 +1577,8 @@ Error: Values do not match:
            < m : 'a. [< `Bar | `Foo of 'b & int ] as 'c > -> < m : 'b. 'c >
        The type
          < m : 'a. [< `Bar | `Foo of 'b & int ] as 'c > -> < m : 'b. 'c >
-       is not compatible with the type < m : 'a. 'c > -> < m : 'b. 'c >
+       is not compatible with the type
+         < m : 'a. [< `Bar | `Foo of 'b & int ] as 'd > -> < m : 'b. 'd >
        Types for tag `Foo are incompatible
 |}]
 

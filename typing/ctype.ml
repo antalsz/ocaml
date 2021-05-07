@@ -3467,6 +3467,7 @@ and moregen_row inst_nongen type_pairs env row1 row2 =
     | _, _ :: _ -> raise_for Moregen (Variant (No_tags (First, r2)))
     | _, [] -> ()
   end;
+  let md1 = rm1.desc (* This lets us undo a following [link_type] *) in
   begin match rm1.desc, rm2.desc with
     Tunivar _, Tunivar _ ->
       unify_univar_for Moregen rm1 rm2 !univar_pairs
@@ -3479,72 +3480,78 @@ and moregen_row inst_nongen type_pairs env row1 row2 =
       in
       moregen_occur env rm1.level ext;
       update_scope_for Moregen rm1.scope ext;
+      (* This [link_type] has to be undone if the rest of the function fails *)
       link_type rm1 ext
   | Tconstr _, Tconstr _ ->
       moregen inst_nongen type_pairs env rm1 rm2
   | _ -> raise_unexplained_for Moregen
   end;
-  List.iter
-    (fun (l,f1,f2) ->
-       let f1 = row_field_repr f1 and f2 = row_field_repr f2 in
-       if f1 == f2 then () else
-       match f1, f2 with
-       (* Both matching [Rpresent]s *)
-       | Rpresent(Some t1), Rpresent(Some t2) -> begin
-           try
-             moregen inst_nongen type_pairs env t1 t2
-           with Moregen_trace trace ->
-             raise_trace_for Moregen
-               (Variant (Incompatible_types_for l) :: trace)
-         end
-       | Rpresent None, Rpresent None -> ()
-       (* Both [Reither] *)
-       | Reither(c1, tl1, _, e1), Reither(c2, tl2, m2, e2) -> begin
-           try
-             if e1 != e2 then begin
-               if c1 && not c2 then raise_unexplained_for Moregen;
-               set_row_field e1 (Reither (c2, [], m2, e2));
-               if List.length tl1 = List.length tl2 then
-                 List.iter2 (moregen inst_nongen type_pairs env) tl1 tl2
-               else match tl2 with
-                 | t2 :: _ ->
-                   List.iter
-                     (fun t1 -> moregen inst_nongen type_pairs env t1 t2)
-                     tl1
-                 | [] -> if tl1 <> [] then raise_unexplained_for Moregen
-             end
-           with Moregen_trace trace ->
-             raise_trace_for Moregen
-               (Variant (Incompatible_types_for l) :: trace)
-         end
-       (* Generalizing [Reither] *)
-       | Reither(false, tl1, _, e1), Rpresent(Some t2) when may_inst -> begin
-           try
-             set_row_field e1 f2;
-             List.iter (fun t1 -> moregen inst_nongen type_pairs env t1 t2) tl1
-           with Moregen_trace trace ->
-             raise_trace_for Moregen
-               (Variant (Incompatible_types_for l) :: trace)
-         end
-       | Reither(true, [], _, e1), Rpresent None when may_inst ->
-           set_row_field e1 f2
-       | Reither(_, _, _, e1), Rabsent when may_inst -> set_row_field e1 f2
-       (* Both [Rabsent]s *)
-       | Rabsent, Rabsent -> ()
-       (* Mismatched constructor arguments *)
-       | Rpresent (Some _), Rpresent None
-       | Rpresent None, Rpresent (Some _) ->
-           raise_for Moregen (Variant (Incompatible_types_for l))
-       (* Mismatched presence *)
-       | Rpresent _, Reither _
-       | Reither _, Rpresent _ ->
-           raise_for Moregen (Variant (Incompatible_presence_for l))
-       (* Missing tags *)
-       | Rabsent, ((Rpresent _ | Reither _) as r) ->
-           raise_for Moregen (Variant (No_tags (First, [l, r])))
-       | ((Rpresent _ | Reither _) as r), Rabsent ->
-           raise_for Moregen (Variant (No_tags (Second, [l, r]))))
-    pairs
+  try
+    List.iter
+      (fun (l,f1,f2) ->
+         let f1 = row_field_repr f1 and f2 = row_field_repr f2 in
+         if f1 == f2 then () else
+         match f1, f2 with
+         (* Both matching [Rpresent]s *)
+         | Rpresent(Some t1), Rpresent(Some t2) -> begin
+             try
+               moregen inst_nongen type_pairs env t1 t2
+             with Moregen_trace trace ->
+               raise_trace_for Moregen
+                 (Variant (Incompatible_types_for l) :: trace)
+           end
+         | Rpresent None, Rpresent None -> ()
+         (* Both [Reither] *)
+         | Reither(c1, tl1, _, e1), Reither(c2, tl2, m2, e2) -> begin
+             try
+               if e1 != e2 then begin
+                 if c1 && not c2 then raise_unexplained_for Moregen;
+                 set_row_field e1 (Reither (c2, [], m2, e2));
+                 if List.length tl1 = List.length tl2 then
+                   List.iter2 (moregen inst_nongen type_pairs env) tl1 tl2
+                 else match tl2 with
+                   | t2 :: _ ->
+                     List.iter
+                       (fun t1 -> moregen inst_nongen type_pairs env t1 t2)
+                       tl1
+                   | [] -> if tl1 <> [] then raise_unexplained_for Moregen
+               end
+             with Moregen_trace trace ->
+               raise_trace_for Moregen
+                 (Variant (Incompatible_types_for l) :: trace)
+           end
+         (* Generalizing [Reither] *)
+         | Reither(false, tl1, _, e1), Rpresent(Some t2) when may_inst -> begin
+             try
+               set_row_field e1 f2;
+               List.iter (fun t1 -> moregen inst_nongen type_pairs env t1 t2) tl1
+             with Moregen_trace trace ->
+               raise_trace_for Moregen
+                 (Variant (Incompatible_types_for l) :: trace)
+           end
+         | Reither(true, [], _, e1), Rpresent None when may_inst ->
+             set_row_field e1 f2
+         | Reither(_, _, _, e1), Rabsent when may_inst -> set_row_field e1 f2
+         (* Both [Rabsent]s *)
+         | Rabsent, Rabsent -> ()
+         (* Mismatched constructor arguments *)
+         | Rpresent (Some _), Rpresent None
+         | Rpresent None, Rpresent (Some _) ->
+             raise_for Moregen (Variant (Incompatible_types_for l))
+         (* Mismatched presence *)
+         | Rpresent _, Reither _
+         | Reither _, Rpresent _ ->
+             (* ASZ: "Foo is guaranteed to be present in %s type but not in the %s" *)
+             raise_for Moregen (Variant (Incompatible_presence_for l))
+         (* Missing tags *)
+         | Rabsent, ((Rpresent _ | Reither _) as r) ->
+             raise_for Moregen (Variant (No_tags (First, [l, r])))
+         | ((Rpresent _ | Reither _) as r), Rabsent ->
+             raise_for Moregen (Variant (No_tags (Second, [l, r]))))
+      pairs
+  with exn ->
+    (* Undo [link_type] if we failed *)
+    set_type_desc rm1 md1; raise exn
 
 (* Must empty univar_pairs first *)
 let moregen inst_nongen type_pairs env patt subj =

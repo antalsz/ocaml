@@ -91,7 +91,7 @@ Error: Signature mismatch:
          val a : t -> t
        The type
          [ `A of int | `B of [ `BA | `BB of unit list ] | `C of unit ] ->
-         [ `A of int | `B of [ `BA | `BB of int list ] | `C of unit ]
+         [> `B of [> `BA | `BB of int list ] | `C of unit ]
        is not compatible with the type t -> t
        Types for tag `BB are incompatible
 |}]

@@ -892,8 +892,8 @@ Error: Signature mismatch:
          val f : [< `C of int & float ] -> unit
        is not included in
          val f : [< `C ] -> unit
-       The type ([< `C of & int & float ] as 'a) -> unit
-       is not compatible with the type 'a -> unit
+       The type [< `C of & int & float ] -> unit
+       is not compatible with the type [< `C ] -> unit
        Types for tag `C are incompatible
 |}];;
 
@@ -973,8 +973,8 @@ Error: Signature mismatch:
          val f : [> `Bar | `Foo ] -> unit
        is not included in
          val f : [< `Bar | `Baz | `Foo ] -> unit
-       The type ([< `Bar | `Baz | `Foo > `Bar `Foo ] as 'a) -> unit
-       is not compatible with the type 'a -> unit
+       The type [> `Bar | `Foo ] -> unit is not compatible with the type
+         [< `Bar | `Baz | `Foo ] -> unit
        The tag `Foo is not guaranteed to be present in both types
 |}];;
 
