@@ -2402,7 +2402,8 @@ module Subtype = struct
     | Errortrace.Subtype.Diff diff ->
         Some (Errortrace.map_diff trees_of_type_expansion diff)
 
-  let report_error ppf env tr1 txt1 ({trace=tr2} : Errortrace.unification_error) =
+  let report_error
+        ppf env tr1 txt1 ({trace=tr2} : Errortrace.unification_error) =
     wrap_printing_env ~error:true env (fun () ->
       reset ();
       let tr1 =

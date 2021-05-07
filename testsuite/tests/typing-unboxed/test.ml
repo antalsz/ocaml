@@ -536,9 +536,10 @@ Error: Signature mismatch:
 
 (* Bad: mismatched arities *)
 
-(* NB: The compiler checks primitive arities *syntactically*, based on the number of
-   arrows it sees.  Thus, hiding function types behind type synonyms will produce an error
-   about the primitive arities not matching, even when the types agree. *)
+(* NB: The compiler checks primitive arities *syntactically*, based on the
+   number of arrows it sees.  Thus, hiding function types behind type synonyms
+   will produce an error about the primitive arities not matching, even when the
+   types agree. *)
 
 module Bad20 : sig
   type int_int := int -> int

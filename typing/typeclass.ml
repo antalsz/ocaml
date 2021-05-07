@@ -311,7 +311,9 @@ let inheritance self_type env ovf concr_meths warn_vals loc parent =
       with Ctype.Unify {trace} ->
         match trace with
         | Diff _ :: Incompatible_fields {name = n; _ } :: rem ->
-            raise(Error(loc, env, Field_type_mismatch ("method", n, {trace = rem})))
+            raise (Error(loc,
+                         env,
+                         Field_type_mismatch ("method", n, {trace = rem})))
         | _ -> assert false
       end;
 

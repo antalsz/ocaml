@@ -581,8 +581,10 @@ let type_manifest env ty1 params1 ty2 params2 priv2 kind2 =
         | Private, Type_abstract -> begin
             (* Same checks as the [when] guards from above, inverted *)
             match ty2'.desc with
-            | Tvariant row -> not (is_absrow env (Btype.row_more row))
-            | Tobject (fi, _) -> not (is_absrow env (snd (Ctype.flatten_fields fi)))
+            | Tvariant row ->
+                not (is_absrow env (Btype.row_more row))
+            | Tobject (fi, _) ->
+                not (is_absrow env (snd (Ctype.flatten_fields fi)))
             | _ -> true
           end
         | _, _ -> false

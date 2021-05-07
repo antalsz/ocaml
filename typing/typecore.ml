@@ -2490,8 +2490,10 @@ let check_univars env kind exp ty_expected vars =
   let ty, complete = polyfy env exp_ty vars in
   if not complete then
     let ty_expected = instance ty_expected in
-    raise (Error (exp.exp_loc, env,
-                  Less_general(kind, {trace = [Errortrace.diff ty ty_expected]})))
+    raise (Error (exp.exp_loc,
+                  env,
+                  Less_general(kind,
+                               {trace = [Errortrace.diff ty ty_expected]})))
 
 let generalize_and_check_univars env kind exp ty_expected vars =
   generalize exp.exp_type;

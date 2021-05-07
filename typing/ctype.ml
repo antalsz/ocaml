@@ -2945,7 +2945,8 @@ and unify_fields env ty1 ty2 =          (* Optimization *)
           end;
           unify env t1 t2
         with Unify_trace trace ->
-          raise_trace_for Unify (Errortrace.incompatible_fields n t1 t2 :: trace)
+          raise_trace_for Unify
+            (Errortrace.incompatible_fields n t1 t2 :: trace)
       )
       pairs
   with exn ->
@@ -3404,7 +3405,8 @@ let rec moregen inst_nongen type_pairs env t1 t2 =
           | (_, _) ->
               raise_unexplained_for Moregen
         end
-  with Moregen_trace trace -> raise_trace_for Moregen (Errortrace.diff t1 t2 :: trace);
+  with Moregen_trace trace ->
+    raise_trace_for Moregen (Errortrace.diff t1 t2 :: trace)
 
 
 and moregen_list inst_nongen type_pairs env tl1 tl2 =
@@ -3429,7 +3431,8 @@ and moregen_fields inst_nongen type_pairs env ty1 ty2 =
        (* The below call should never throw [Public_method_to_private_method] *)
        moregen_kind k1 k2;
        try moregen inst_nongen type_pairs env t1 t2 with Moregen_trace trace ->
-         raise_trace_for Moregen (Errortrace.incompatible_fields n t1 t2 :: trace)
+         raise_trace_for Moregen
+           (Errortrace.incompatible_fields n t1 t2 :: trace)
     )
     pairs
 
@@ -3491,7 +3494,8 @@ and moregen_row inst_nongen type_pairs env row1 row2 =
            try
              moregen inst_nongen type_pairs env t1 t2
            with Moregen_trace trace ->
-             raise_trace_for Moregen (Variant (Incompatible_types_for l) :: trace)
+             raise_trace_for Moregen
+               (Variant (Incompatible_types_for l) :: trace)
          end
        | Rpresent None, Rpresent None -> ()
        (* Both [Reither] *)
@@ -3510,7 +3514,8 @@ and moregen_row inst_nongen type_pairs env row1 row2 =
                  | [] -> if tl1 <> [] then raise_unexplained_for Moregen
              end
            with Moregen_trace trace ->
-             raise_trace_for Moregen (Variant (Incompatible_types_for l) :: trace)
+             raise_trace_for Moregen
+               (Variant (Incompatible_types_for l) :: trace)
          end
        (* Generalizing [Reither] *)
        | Reither(false, tl1, _, e1), Rpresent(Some t2) when may_inst -> begin
@@ -3518,7 +3523,8 @@ and moregen_row inst_nongen type_pairs env row1 row2 =
              set_row_field e1 f2;
              List.iter (fun t1 -> moregen inst_nongen type_pairs env t1 t2) tl1
            with Moregen_trace trace ->
-             raise_trace_for Moregen (Variant (Incompatible_types_for l) :: trace)
+             raise_trace_for Moregen
+               (Variant (Incompatible_types_for l) :: trace)
          end
        | Reither(true, [], _, e1), Rpresent None when may_inst ->
            set_row_field e1 f2
@@ -3767,7 +3773,8 @@ and eqtype_fields rename type_pairs subst env ty1 ty2 =
            try
              eqtype rename type_pairs subst env t1 t2;
            with Equality_trace trace ->
-             raise_trace_for Equality (Errortrace.incompatible_fields n t1 t2 :: trace))
+             raise_trace_for Equality
+               (Errortrace.incompatible_fields n t1 t2 :: trace))
         pairs
 
 and eqtype_kind k1 k2 =
@@ -3817,7 +3824,8 @@ and eqtype_row rename type_pairs subst env row1 row2 =
            try
              eqtype rename type_pairs subst env t1 t2
            with Equality_trace trace ->
-             raise_trace_for Equality (Variant (Incompatible_types_for l) :: trace)
+             raise_trace_for Equality
+               (Variant (Incompatible_types_for l) :: trace)
          end
        | Rpresent None, Rpresent None -> ()
        (* Both matching [Reither]s *)
@@ -3836,7 +3844,8 @@ and eqtype_row rename type_pairs subst env row1 row2 =
                  (fun t1 -> eqtype rename type_pairs subst env t1 t2) tl1
              end
            with Equality_trace trace ->
-             raise_trace_for Equality (Variant (Incompatible_types_for l) :: trace)
+             raise_trace_for Equality
+               (Variant (Incompatible_types_for l) :: trace)
          end
        (* Both [Rabsent]s *)
        | Rabsent, Rabsent -> ()
@@ -3918,9 +3927,10 @@ let rec moregen_clty trace type_pairs env cty1 cty2 =
     | _, Cty_constr (_, _, cty2) ->
         moregen_clty true type_pairs env cty1 cty2
     | Cty_arrow (l1, ty1, cty1'), Cty_arrow (l2, ty2, cty2') when l1 = l2 ->
-        begin try moregen true type_pairs env ty1 ty2 with Moregen_trace trace ->
-        raise (Failure [
-          CM_Parameter_mismatch (env, {trace = expand_trace env trace})])
+        begin
+          try moregen true type_pairs env ty1 ty2 with Moregen_trace trace ->
+            raise (Failure [
+              CM_Parameter_mismatch (env, {trace = expand_trace env trace})])
         end;
         moregen_clty false type_pairs env cty1' cty2'
     | Cty_signature sign1, Cty_signature sign2 ->
@@ -4060,16 +4070,23 @@ let equal_clsig trace type_pairs subst env sign1 sign2 =
            Equality_trace trace ->
            raise (Failure
                     [CM_Meth_type_mismatch
-                       (lab, env, Equality_error {subst = !subst; trace = expand_trace env trace})])
+                       (lab,
+                        env,
+                        Equality_error {subst = !subst;
+                                        trace = expand_trace env trace})])
          end)
       pairs;
     Vars.iter
       (fun lab (_, _, ty) ->
          let (_, _, ty') = Vars.find lab sign1.csig_vars in
-         try eqtype true type_pairs subst env ty' ty with Equality_trace trace ->
+         try eqtype true type_pairs subst env ty' ty
+         with Equality_trace trace ->
            raise (Failure
                     [CM_Val_type_mismatch
-                       (lab, env, Equality_error {subst = !subst; trace = expand_trace env trace})]))
+                       (lab,
+                        env,
+                        Equality_error {subst = !subst;
+                                        trace = expand_trace env trace})]))
       sign2.csig_vars
   with
     Failure error when trace ->
@@ -4159,8 +4176,10 @@ let match_class_declarations env patt_params patt_type subj_params subj_type =
           raise (Failure [CM_Parameter_arity_mismatch (lp, ls)]);
         List.iter2 (fun p s ->
           try eqtype true type_pairs subst env p s with Equality_trace trace ->
-            raise (Failure [CM_Type_parameter_mismatch
-                              (env, {subst = !subst; trace = expand_trace env trace})]))
+            raise (Failure
+                     [CM_Type_parameter_mismatch
+                        (env,
+                         {subst = !subst; trace = expand_trace env trace})]))
           patt_params subj_params;
      (* old code: equal_clty false type_pairs subst env patt_type subj_type; *)
         equal_clsig false type_pairs subst env sign1 sign2;
@@ -4708,8 +4727,11 @@ let rec normalize_type_rec visited ty =
               let tyl' =
                 List.fold_left
                   (fun tyl ty ->
-                    if List.exists (fun ty' -> is_equal Env.empty false [ty] [ty']) tyl
-                    then tyl else ty::tyl)
+                     if List.exists
+                          (fun ty' -> is_equal Env.empty false [ty] [ty'])
+                          tyl
+                     then tyl
+                     else ty::tyl)
                   [ty] tyl
               in
               if f != f0 || List.length tyl' < List.length tyl then

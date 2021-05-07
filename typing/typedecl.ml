@@ -1674,7 +1674,8 @@ let report_error ppf = function
       fprintf ppf "@[<v>@[<hov>%s@ %s@;<1 2>%a@]%a@]"
         "This variant or record definition" "does not match that of type"
         Printtyp.type_expr ty
-        (Includecore.report_type_mismatch "the original" "this" "definition" env)
+        (Includecore.report_type_mismatch
+           "the original" "this" "definition" env)
         err
   | Constraint_failed (env, err) ->
       fprintf ppf "@[<v>Constraints are not satisfied in this type.@ ";
