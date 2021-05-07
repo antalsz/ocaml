@@ -3252,7 +3252,7 @@ let filter_arrow env t l =
       when l = l' || !Clflags.classic && l = Nolabel && not (is_optional l') ->
         (t1, t2)
     | _ ->
-        raise (Unify {trace=[]}) (* ASZ: This seems a mite suspicious *)
+        raise (Unify {trace=[]})
 
 (* Used by [filter_method]. *)
 let rec filter_method_field env name priv ty =
@@ -3279,7 +3279,7 @@ let rec filter_method_field env name priv ty =
       end else
         filter_method_field env name priv ty2
   | _ ->
-      raise_unexplained_for Unify (* ASZ: This seems a mite suspicious *)
+      raise_unexplained_for Unify
 
 (* Unify [ty] and [< name : 'a; .. >]. Return ['a]. *)
 let filter_method env name priv ty =
@@ -3296,7 +3296,7 @@ let filter_method env name priv ty =
     | Tobject(f, _) ->
         filter_method_field env name priv f
     | _ ->
-        raise_unexplained_for Unify (* ASZ: This seems a mite suspicious *)
+        raise_unexplained_for Unify
   with Unify_trace trace ->
     raise (Unify {trace})
 

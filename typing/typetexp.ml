@@ -290,12 +290,7 @@ and transl_type_aux env policy styp =
         )
         (List.combine stl args) params;
         let ty_args = List.map (fun ctyp -> ctyp.ctyp_type) args in
-      let ty =
-        Ctype.expand_head env (newconstr path ty_args)
-        (* ASZ *)
-        (* with Unify _err -> *)
-          (* raise (Error(styp.ptyp_loc, env, Type_mismatch err)) *)
-      in
+      let ty = Ctype.expand_head env (newconstr path ty_args) in
       let ty = match ty.desc with
         Tvariant row ->
           let row = Btype.row_repr row in
