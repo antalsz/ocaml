@@ -40,5 +40,5 @@ Error: Signature mismatch:
          type t += private A
        is not included in
          type t += A
-       A private type would be revealed.
+       A private extension constructor[ASZ] would be revealed.
 |}];;

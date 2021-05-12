@@ -1202,7 +1202,7 @@ Error: Signature mismatch:
          type t = private [ `A | `B ]
        is not included in
          type t = [ `A | `B ]
-       A private type would be revealed.
+       A private type abbreviation[ASZ] would be revealed.
 |}];;
 
 module M : sig

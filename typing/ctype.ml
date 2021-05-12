@@ -3239,20 +3239,22 @@ let expand_head_trace env t =
 *)
 
 let filter_arrow env t l =
-  match expand_head_trace env t with
-  | exception Unify_trace _ -> assert false
-  | t -> match t.desc with
-    | Tvar _ ->
-        let lv = t.level in
-        let t1 = newvar2 lv and t2 = newvar2 lv in
-        let t' = newty2 lv (Tarrow (l, t1, t2, Cok)) in
-        link_type t t';
-        (t1, t2)
-    | Tarrow(l', t1, t2, _)
-      when l = l' || !Clflags.classic && l = Nolabel && not (is_optional l') ->
-        (t1, t2)
-    | _ ->
-        raise (Unify {trace=[]})
+  let t =
+    try expand_head_trace env t
+    with Unify_trace _ -> assert false
+  in
+  match t.desc with
+  | Tvar _ ->
+    let lv = t.level in
+    let t1 = newvar2 lv and t2 = newvar2 lv in
+    let t' = newty2 lv (Tarrow (l, t1, t2, Cok)) in
+    link_type t t';
+    (t1, t2)
+  | Tarrow(l', t1, t2, _)
+    when l = l' || !Clflags.classic && l = Nolabel && not (is_optional l') ->
+    (t1, t2)
+  | _ ->
+    raise (Unify {trace=[]})
 
 (* Used by [filter_method]. *)
 let rec filter_method_field env name priv ty =
@@ -3794,7 +3796,9 @@ and eqtype_kind k1 k2 =
   match k1, k2 with
   | (Fvar _, Fvar _)
   | (Fpresent, Fpresent) -> ()
-  | _                    -> assert false
+  | _                    -> raise_unexplained_for Unify
+                            (* It's probably not possible to hit this case with
+                               real OCaml code *)
 
 and eqtype_row rename type_pairs subst env row1 row2 =
   (* Try expansion, needed when called from Includecore.type_manifest *)

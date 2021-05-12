@@ -237,7 +237,7 @@ Error: Signature mismatch:
          type foo = M.foo = private ..
        is not included in
          type foo = ..
-       A private type would be revealed.
+       A private type abbreviation[ASZ] would be revealed.
 |}]
 
 

@@ -196,7 +196,7 @@ let report_primitive_mismatch first second ppf err =
       pr "The names of the primitives are not the same"
   | Arity ->
       pr "The syntactic arities of these primitives were not the same@ \
-          (They must have the same number of ->s present in the source)"
+          (They must have the same number of arrows present in the source)"
   | No_alloc ord ->
       pr "%s primitive is [@@@@noalloc] but %s is not"
         (String.capitalize_ascii (choose ord first second))
@@ -292,7 +292,7 @@ let report_variant_mismatch first second decl env ppf err =
 let report_extension_constructor_mismatch first second decl env ppf err =
   let pr fmt = Format.fprintf ppf fmt in
   match (err : extension_constructor_mismatch) with
-  | Constructor_privacy -> pr "A private type would be revealed."
+  | Constructor_privacy -> pr "A private extension constructor[ASZ] would be revealed."
   | Constructor_mismatch (id, ext1, ext2, err) ->
       pr "@[<hv>Constructors do not match:@;<1 2>%a@ is not the same as:\
           @;<1 2>%a@ %a@]"
@@ -330,7 +330,7 @@ let report_type_mismatch first second decl env ppf err =
   | Arity ->
       pr "They have different arities."
   | Privacy ->
-      pr "A private type would be revealed."
+      pr "A private type abbreviation[ASZ] would be revealed."
   | Kind ->
       pr "Their kinds differ."
   | Constraint err ->
