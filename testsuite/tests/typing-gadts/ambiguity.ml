@@ -234,7 +234,8 @@ Error: Signature mismatch:
        is not included in
          val r : T.u list ref
        The type 'weak1 list ref is not compatible with the type T.u list ref
-       This instance of T.u is ambiguous:
+       Type 'weak1 is not compatible with type T.u = T.t
+       This instance of T.t is ambiguous:
        it would escape the scope of its equation
 |}]
 
@@ -268,6 +269,7 @@ Error: Signature mismatch:
        is not included in
          val r : T.t list ref
        The type 'weak2 list ref is not compatible with the type T.t list ref
-       This instance of T.t is ambiguous:
+       Type 'weak2 is not compatible with type T.t = T.u
+       This instance of T.u is ambiguous:
        it would escape the scope of its equation
 |}]

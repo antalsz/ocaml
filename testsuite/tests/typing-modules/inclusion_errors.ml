@@ -589,6 +589,7 @@ Error: Signature mismatch:
          val f : s -> s
        The type < m : int > -> < m : int > is not compatible with the type
          s -> s
+       Type < m : int > is not compatible with type s = < m : int; .. >
        The second object type has an abstract row, it cannot be closed
 |}];;
 
@@ -677,7 +678,8 @@ Error: Signature mismatch:
        is not included in
          val r : T.s list ref
        The type 'weak4 list ref is not compatible with the type T.s list ref
-       This instance of T.s is ambiguous:
+       Type 'weak4 is not compatible with type T.s = T.t
+       This instance of T.t is ambiguous:
        it would escape the scope of its equation
 |}];;
 
@@ -1328,7 +1330,8 @@ Error: Signature mismatch:
        is not included in
          type t = private int * (int * int)
        The type int * q is not equal to the type int * (int * int)
-       Type w is not equal to type int
+       Type q = int * w is not equal to type int * int
+       Type w = float is not equal to type int
 |}];;
 
 type s = private int

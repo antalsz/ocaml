@@ -61,10 +61,12 @@ exception Unify_trace    of unification Errortrace.t
 exception Equality_trace of comparison  Errortrace.t
 exception Moregen_trace  of comparison  Errortrace.t
 
+module X = struct
 exception Unify    of unification_error
 exception Equality of equality_error
 exception Moregen  of moregen_error
 exception Subtype  of Errortrace.Subtype.t * unification_error
+end
 
 exception Escape of desc Errortrace.escape
 
@@ -1499,7 +1501,7 @@ let subst env level priv abbrev ty params args body =
     List.iter2 (!unify_var' env) params' args;
     current_level := old_level;
     body'
-  with Unify _ ->
+  with X.Unify _ ->
     current_level := old_level;
     undo_abbrev ();
     raise Cannot_subst
@@ -2115,6 +2117,15 @@ let expand_trace env trace =
 
 let expand_subtype_trace env trace =
   expand_any_trace Subtype.map env trace
+
+let raise_Unify ~env ~trace =
+  raise (X.Unify {trace = expand_trace env trace})
+
+let raise_Equality ~env ~trace ~subst =
+  raise (X.Equality {trace = expand_trace env trace; subst})
+
+let raise_Moregen ~env ~trace =
+  raise (X.Moregen {trace = expand_trace env trace})
 
 (**** Unification ****)
 
@@ -3168,7 +3179,7 @@ let unify env ty1 ty2 =
   with
     Unify_trace trace ->
       undo_compress snap;
-      raise (Unify {trace = expand_trace !env trace})
+      raise_Unify ~env:!env ~trace (* (Unify {trace = expand_trace !env trace}) *)
 
 let unify_gadt ~equations_level:lev ~allow_recursive (env:Env.t ref) ty1 ty2 =
   try
@@ -3204,10 +3215,11 @@ let unify_var env t1 t2 =
         reset_trace_gadt_instances reset_tracing;
       with Unify_trace trace ->
         reset_trace_gadt_instances reset_tracing;
-        let expanded_trace =
-          expand_trace env @@ Errortrace.diff t1 t2 :: trace
-        in
-        raise (Unify {trace = expanded_trace})
+        raise_Unify ~env ~trace:(Errortrace.diff t1 t2 :: trace)
+        (* let expanded_trace =
+         *   expand_trace env @@ Errortrace.diff t1 t2 :: trace
+         * in
+         * raise (Unify {trace = expanded_trace}) *)
       end
   | _ ->
       unify (ref env) t1 t2
@@ -3254,7 +3266,7 @@ let filter_arrow env t l =
     when l = l' || !Clflags.classic && l = Nolabel && not (is_optional l') ->
     (t1, t2)
   | _ ->
-    raise (Unify {trace=[]})
+    raise (X.Unify {trace=[]})
 
 (* Used by [filter_method]. *)
 let rec filter_method_field env name priv ty =
@@ -3300,7 +3312,7 @@ let filter_method env name priv ty =
     | _ ->
         raise_unexplained_for Unify
   with Unify_trace trace ->
-    raise (Unify {trace})
+    raise_Unify ~env ~trace (* (Unify {trace}) *)
 
 let check_filter_method env name priv ty =
   ignore(filter_method env name priv ty)
@@ -3591,13 +3603,13 @@ let moregeneral env inst_nongen pat_sch subj_sch =
        try
          moregen inst_nongen (TypePairs.create 13) env patt subj
        with Moregen_trace trace ->
-         raise (Moregen {trace}))
+         raise_Moregen ~env ~trace (* (Moregen {trace}) *))
     ~always:(fun () -> current_level := old_level)
 
 let is_moregeneral env inst_nongen pat_sch subj_sch =
   match moregeneral env inst_nongen pat_sch subj_sch with
   | () -> true
-  | exception Moregen _ -> false
+  | exception X.Moregen _ -> false
 
 (* Alternative approach: "rigidify" a type scheme,
    and check validity after unification *)
@@ -3651,7 +3663,7 @@ let matches env ty ty' =
         raise (Matches_failure (env, {trace = [Errortrace.diff ty ty']}))
       end;
       backtrack snap
-  | exception Unify err ->
+  | exception X.Unify err ->
       backtrack snap;
       raise (Matches_failure (env, err))
 
@@ -3900,17 +3912,17 @@ let equal env rename tyl1 tyl2 =
   try eqtype_list rename (TypePairs.create 11) subst env tyl1 tyl2
   with Equality_trace trace ->
     normalize_subst subst;
-    raise (Equality {subst = !subst; trace})
+    raise_Equality ~env ~subst:!subst ~trace (* (Equality {subst = !subst; trace}) *)
 
 let is_equal env rename tyl1 tyl2 =
   match equal env rename tyl1 tyl2 with
   | () -> true
-  | exception Equality _ -> false
+  | exception X.Equality _ -> false
 
 let rec equal_private env params1 ty1 params2 ty2 =
   match equal env true (params1 @ [ty1]) (params2 @ [ty2]) with
   | () -> ()
-  | exception (Equality _ as err) ->
+  | exception (X.Equality _ as err) ->
       match try_expand_safe_opt env (expand_head env ty1) with
       | ty1' -> equal_private env params1 ty1' params2 ty2
       | exception Cannot_expand -> raise err
@@ -4326,7 +4338,7 @@ let rec build_subtype env visited loops posi level t =
           let nm =
             if c > Equiv || deep_occur ty ty1' then None else Some(p,tl1) in
           set_type_desc t'' (Tobject (ty1', ref nm));
-          (try unify_var env ty t with Unify _ -> assert false);
+          (try unify_var env ty t with X.Unify _ -> assert false);
           (t'', Changed)
       | _ -> raise Not_found
       with Not_found ->
@@ -4449,8 +4461,8 @@ let enlarge_type env ty =
 
 let subtypes = TypePairs.create 17
 
-let subtype_error env trace =
-  raise (Subtype (expand_subtype_trace env (List.rev trace), {trace=[]}))
+let subtype_error ~env ~trace ~unification_trace =
+  raise (X.Subtype (expand_subtype_trace env (List.rev trace), {trace=unification_trace}))
 
 let rec subtype_rec env trace t1 t2 cstrs =
   let t1 = repr t1 in
@@ -4544,7 +4556,7 @@ let rec subtype_rec env trace t1 t2 cstrs =
             match List.iter (fun (_, t1, t2, _) -> unify env t1 t2) cstrs' with
             | () when !package_subtype env p1 fl1 p2 fl2 ->
               Btype.backtrack snap; cstrs' @ cstrs
-            | () | exception Unify _ ->
+            | () | exception X.Unify _ ->
               Btype.backtrack snap; raise Not_found
           end
         with Not_found ->
@@ -4556,7 +4568,7 @@ let rec subtype_rec env trace t1 t2 cstrs =
 
 and subtype_list env trace tl1 tl2 cstrs =
   if List.length tl1 <> List.length tl2 then
-    subtype_error env trace;
+    subtype_error ~env ~trace ~unification_trace:[];
   List.fold_left2
     (fun cstrs t1 t2 -> subtype_rec env (Subtype.diff t1 t2::trace) t1 t2 cstrs)
     cstrs tl1 tl2
@@ -4639,9 +4651,10 @@ let subtype env ty1 ty2 =
   function () ->
     List.iter
       (function (trace0, t1, t2, pairs) ->
-         try unify_pairs (ref env) t1 t2 pairs with Unify {trace} ->
-           raise (Subtype (expand_subtype_trace env (List.rev trace0),
-                           {trace = List.tl trace})))
+         try unify_pairs (ref env) t1 t2 pairs with X.Unify {trace} ->
+           subtype_error ~env ~trace:trace0 ~unification_trace:(List.tl trace)
+           (* raise (Subtype (expand_subtype_trace env (List.rev trace0),
+            *                 {trace = List.tl trace})) *))
       (List.rev cstrs)
 
                               (*******************)
@@ -5111,3 +5124,5 @@ let immediacy env typ =
   | _ -> Type_immediacy.Unknown
 
 let maybe_pointer_type env typ = not (is_immediate (immediacy env typ))
+
+include X
