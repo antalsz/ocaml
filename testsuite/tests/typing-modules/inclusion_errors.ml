@@ -1204,7 +1204,7 @@ Error: Signature mismatch:
          type t = private [ `A | `B ]
        is not included in
          type t = [ `A | `B ]
-       A private type abbreviation[ASZ] would be revealed.
+       [ASZ] A private type abbreviation would be revealed
 |}];;
 
 module M : sig
@@ -1378,7 +1378,7 @@ Error: Signature mismatch:
          type t = private A
        is not included in
          type t = A
-       A private type abbreviation[ASZ] would be revealed.
+       [ASZ] A private variant type would be revealed
 |}];;
 
 module M : sig
@@ -1400,7 +1400,7 @@ Error: Signature mismatch:
          type t = private A | B
        is not included in
          type t = A | B
-       A private type abbreviation[ASZ] would be revealed.
+       [ASZ] A private variant type would be revealed
 |}];;
 
 module M : sig
@@ -1422,7 +1422,7 @@ Error: Signature mismatch:
          type t = private A of { x : int; y : bool; }
        is not included in
          type t = A of { x : int; y : bool; }
-       A private type abbreviation[ASZ] would be revealed.
+       [ASZ] A private variant type would be revealed
 |}];;
 
 module M : sig
@@ -1444,7 +1444,7 @@ Error: Signature mismatch:
          type t = private { x : int; y : bool; }
        is not included in
          type t = { x : int; y : bool; }
-       A private type abbreviation[ASZ] would be revealed.
+       [ASZ] A private record type would be revealed
 |}];;
 
 module M : sig
@@ -1466,7 +1466,7 @@ Error: Signature mismatch:
          type t = private A | B
        is not included in
          type t = A
-       A private type abbreviation[ASZ] would be revealed.
+       [ASZ] A private variant type would be revealed
 |}];;
 
 module M : sig
@@ -1488,7 +1488,7 @@ Error: Signature mismatch:
          type t = private A
        is not included in
          type t = A | B
-       A private type abbreviation[ASZ] would be revealed.
+       [ASZ] A private variant type would be revealed
 |}];;
 
 module M : sig
@@ -1510,7 +1510,7 @@ Error: Signature mismatch:
          type t = private { x : int; y : bool; }
        is not included in
          type t = A | B
-       A private type abbreviation[ASZ] would be revealed.
+       Their kinds differ.
 |}];;
 
 module M : sig
@@ -1532,7 +1532,7 @@ Error: Signature mismatch:
          type t = private A | B
        is not included in
          type t = { x : int; y : bool; }
-       A private type abbreviation[ASZ] would be revealed.
+       Their kinds differ.
 |}];;
 
 (* ASZ: Should this be "private row type"? *)
@@ -1555,7 +1555,7 @@ Error: Signature mismatch:
          type t = private [< `A | `B ]
        is not included in
          type t = [ `A ]
-       A private type abbreviation[ASZ] would be revealed.
+       [ASZ] A private type abbreviation would be revealed
 |}];;
 
 (* ASZ: Should this be "private object type"? *)
@@ -1578,5 +1578,5 @@ Error: Signature mismatch:
          type t = private < m : int; .. >
        is not included in
          type t = < m : int >
-       A private type abbreviation[ASZ] would be revealed.
+       [ASZ] A private type abbreviation would be revealed
 |}];;

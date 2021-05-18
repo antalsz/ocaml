@@ -98,16 +98,6 @@ let value_descriptions ~loc env name
       | (_, _) -> Tcoerce_none
     end
 
-(* Inclusion between "private" annotations *)
-
-let private_flags decl1 decl2 =
-  match decl1.type_private, decl2.type_private with
-  | Private, Public ->
-      decl2.type_kind = Type_abstract &&
-      (decl2.type_manifest = None || decl1.type_kind <> Type_abstract)
-  | _, _ ->
-      true
-
 (* Inclusion between manifest types (particularly for private row types) *)
 
 let is_absrow env ty =
@@ -130,6 +120,15 @@ let choose_other ord first second =
   match ord with
   | First -> choose Second first second
   | Second -> choose First first second
+
+(* Documents which kind of private thing would be revealed *)
+type privacy_mismatch =
+  | Private_type_abbreviation
+  | Private_variant_type
+  | Private_record_type
+  | Private_extensible_variant
+  | Private_row_type
+  | Private_object_type
 
 type label_mismatch =
   | Type of Errortrace.equality_error
@@ -177,7 +176,7 @@ type private_object_mismatch =
 
 type type_mismatch =
   | Arity
-  | Privacy
+  | Privacy of privacy_mismatch
   | Kind
   | Constraint of Errortrace.equality_error
   | Manifest of Errortrace.equality_error
@@ -226,6 +225,17 @@ let report_type_inequality env ppf err =
   Printtyp.report_equality_error ppf env err
     (fun ppf -> Format.fprintf ppf "The type")
     (fun ppf -> Format.fprintf ppf "is not equal to the type")
+
+let report_privacy_mismatch ppf err =
+  Format.fprintf ppf
+    "[ASZ] A private %s would be revealed"
+    (match err with
+     | Private_type_abbreviation  -> "type abbreviation"
+     | Private_variant_type       -> "variant type"
+     | Private_record_type        -> "record type"
+     | Private_extensible_variant -> "extensible variant"
+     | Private_row_type           -> "row type"
+     | Private_object_type        -> "object type")
 
 let report_label_mismatch first second env ppf err =
   match (err : label_mismatch) with
@@ -329,8 +339,8 @@ let report_type_mismatch first second decl env ppf err =
   match err with
   | Arity ->
       pr "They have different arities."
-  | Privacy ->
-      pr "A private type abbreviation[ASZ] would be revealed."
+  | Privacy err ->
+      report_privacy_mismatch ppf err
   | Kind ->
       pr "Their kinds differ."
   | Constraint err ->
@@ -465,6 +475,36 @@ let compare_records_with_representation ~loc env params1 params2 n
       let pos = if rep2 = Record_float then Second else First in
       Some (Unboxed_float_representation pos)
   | err -> err
+
+(* Inclusion between "private" annotations *)
+let privacy_mismatch env decl1 decl2 =
+  match decl1.type_private, decl2.type_private with
+  | Private, Public -> begin
+      match decl1.type_kind, decl2.type_kind with
+      | Type_record  _, Type_record  _ -> Some Private_record_type
+      | Type_variant _, Type_variant _ -> Some Private_variant_type
+      | Type_open,      Type_open      -> Some Private_extensible_variant
+      | Type_abstract, Type_abstract when Option.is_some decl2.type_manifest -> begin
+          match decl1.type_manifest with
+          | Some ty1 -> Some begin
+              (* ASZ: pass this in, or duplicate the work? *)
+              let ty1 = Ctype.expand_head env ty1 in
+              match ty1.desc with
+              | Tvariant row when is_absrow env (Btype.row_more row) ->
+                  Private_row_type
+              | Tobject (fi, _) when is_absrow env (snd (Ctype.flatten_fields fi)) ->
+                  Private_object_type
+              | _ ->
+                  Private_type_abbreviation
+            end
+          | None ->
+              None
+        end
+      | _, _ ->
+          None
+    end
+  | _, _ ->
+      None
 
 let private_variant env row1 params1 row2 params2 =
     let r1, r2, pairs =
@@ -608,7 +648,7 @@ let type_declarations ?(equality = false) ~loc env ~mark name
     decl1.type_attributes decl2.type_attributes
     name;
   if decl1.type_arity <> decl2.type_arity then Some Arity else
-  if not (private_flags decl1 decl2) then Some Privacy else
+  match privacy_mismatch env decl1 decl2 with Some err -> Some (Privacy err) | None ->
   let err = match (decl1.type_manifest, decl2.type_manifest) with
       (_, None) ->
         begin
