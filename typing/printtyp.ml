@@ -2020,7 +2020,7 @@ let same_path t t' =
 
 type 'a diff = Same of 'a | Diff of 'a * 'a
 
-let trees_of_type_expansion (t,t') =
+let trees_of_type_expansion Errortrace.{ty = t; expanded = t'} =
   if same_path t t'
   then begin add_delayed (proxy t); Same (tree_of_typexp false t) end
   else
@@ -2070,7 +2070,8 @@ type printing_status =
       type error.
   *)
 
-let diff_printing_status { Errortrace.got=t1, t1'; expected=t2, t2'} =
+let diff_printing_status Errortrace.{ got      = {ty = t1; expanded = t1'};
+                                      expected = {ty = t2; expanded = t2'} } =
   if  is_constr_row ~allow_ident:true t1'
    || is_constr_row ~allow_ident:true t2'
   then Discard
@@ -2113,7 +2114,7 @@ let prepare_any_trace printing_status tr =
   | elt :: rem -> elt :: List.fold_right clean_trace rem []
 
 let prepare_trace f tr =
-  prepare_any_trace printing_status (Errortrace.flatten f tr)
+  prepare_any_trace printing_status (Errortrace.map f tr)
 
 (** Keep elements that are not [Diff _ ] and take the decision
     for the last element, require a prepared trace *)
@@ -2138,17 +2139,17 @@ let hide_variant_name t =
                    row_more = newvar2 (row_more row).level})
   | _ -> t
 
-let prepare_expansion (t, t') =
-  let t' = hide_variant_name t' in
-  mark_loops t;
-  if not (same_path t t') then mark_loops t';
-  (t, t')
+let prepare_expansion Errortrace.{ty; expanded} =
+  let expanded = hide_variant_name expanded in
+  mark_loops ty;
+  if not (same_path ty expanded) then mark_loops expanded;
+  Errortrace.{ty; expanded}
 
-let may_prepare_expansion compact (t, t') =
-  match (repr t').desc with
+let may_prepare_expansion compact (Errortrace.{ty; expanded} as ty_exp) =
+  match (repr expanded).desc with
     Tvariant _ | Tobject _ when compact ->
-      mark_loops t; (t, t)
-  | _ -> prepare_expansion (t, t')
+      mark_loops ty; Errortrace.{ty; expanded = ty}
+  | _ -> prepare_expansion ty_exp
 
 let print_path p = Format.dprintf "%a" !Oprint.out_ident (tree_of_path Type p)
 
@@ -2256,7 +2257,7 @@ let explain_escape pre = function
         "%t@,@[The module type@;<1 2>%a@ would escape its scope@]"
         pre path p
     )
-  | Errortrace.Equation (_,t) -> Some(
+  | Errortrace.Equation Errortrace.{ty = _; expanded = t} -> Some(
       dprintf "%t @,@[<hov>This instance of %a is ambiguous:@ %s@]"
         pre type_expr t
         "it would escape the scope of its equation"
@@ -2280,10 +2281,10 @@ let explain_object (type variety) : variety Errortrace.obj -> _ = function
       Some (dprintf "@,Self type cannot be unified with a closed object type")
 
 let explanation (type variety) intro prev env
-  : ('a, variety) Errortrace.elt -> _ = function
-  | Errortrace.Diff { Errortrace.got = _,s; expected = _,t } ->
-    explanation_diff env s t
-  | Errortrace.Escape {kind;context} ->
+  : (Errortrace.expanded_type, variety) Errortrace.elt -> _ = function
+  | Errortrace.Diff {got; expected} ->
+    explanation_diff env got.expanded expected.expanded
+  | Errortrace.Escape {kind; context} ->
     let pre =
       match context, kind, prev with
       | Some ctx, _, _ ->
@@ -2353,7 +2354,8 @@ let head_error_printer txt_got txt_but = function
 
 let warn_on_missing_defs env ppf = function
   | None -> ()
-  | Some {Errortrace.got=te1,_; expected=te2,_ } ->
+  | Some Errortrace.{got      = {ty=te1; expanded=_};
+                     expected = {ty=te2; expanded=_} } ->
       warn_on_missing_def env ppf te1;
       warn_on_missing_def env ppf te2
 
@@ -2362,7 +2364,7 @@ let error trace_format subst env tr txt1 ppf txt2 ty_expect_explanation =
   reset ();
   (* We want to substitute in the opposite order from [Eqtype] *)
   Names.add_subst (List.map (fun (ty1,ty2) -> ty2,ty1) subst);
-  let tr = prepare_trace (fun t t' -> t, hide_variant_name t') tr in
+  let tr = prepare_trace (fun ty_exp -> Errortrace.{ty_exp with expanded = hide_variant_name ty_exp.expanded}) tr in
   let mis = mismatch txt1 env tr in
   match tr with
   | [] -> assert false
@@ -2422,7 +2424,7 @@ module Subtype = struct
   let prepare_unification_trace = prepare_trace
 
   let prepare_trace f tr =
-    prepare_any_trace printing_status (Errortrace.Subtype.flatten f tr)
+    prepare_any_trace printing_status (Errortrace.Subtype.map f tr)
 
   let trace filter_trace get_diff fst keep_last txt ppf tr =
     print_labels := not !Clflags.classic;
@@ -2468,12 +2470,8 @@ module Subtype = struct
         ppf env tr1 txt1 ({trace=tr2} : Errortrace.unification_error) =
     wrap_printing_env ~error:true env (fun () ->
       reset ();
-      let tr1 =
-        prepare_trace (fun t t' -> prepare_expansion (t, t')) tr1
-      in
-      let tr2 =
-        prepare_unification_trace (fun t t' -> prepare_expansion (t, t')) tr2
-      in
+      let tr1 = prepare_trace prepare_expansion tr1 in
+      let tr2 = prepare_unification_trace prepare_expansion tr2 in
       let keep_first = match tr2 with
         | [Obj _ | Variant _ | Escape _ ] | [] -> true
         | _ -> false in
@@ -2513,8 +2511,8 @@ let report_ambiguous_type_error ppf env tp0 tpl txt1 txt2 txt3 =
 (* Adapt functions to exposed interface *)
 let tree_of_path = tree_of_path Other
 let tree_of_modtype = tree_of_modtype ~ellipsis:false
-let type_expansion ty ppf ty' =
-  type_expansion ppf (trees_of_type_expansion (ty,ty'))
+let type_expansion ppf ty_exp =
+  type_expansion ppf (trees_of_type_expansion ty_exp)
 let tree_of_type_declaration ident td rs =
   with_hidden_items [{hide=true; ident}]
     (fun () -> tree_of_type_declaration ident td rs)

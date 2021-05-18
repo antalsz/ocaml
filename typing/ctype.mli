@@ -23,9 +23,9 @@ module TypePairs : Hashtbl.S with type key = type_expr * type_expr
 exception Unify    of Errortrace.unification_error
 exception Equality of Errortrace.equality_error
 exception Moregen  of Errortrace.moregen_error
-exception Subtype  of Errortrace.Subtype.t * Errortrace.unification_error
+exception Subtype  of Errortrace.Subtype.error * Errortrace.unification_error
 
-exception Escape of Errortrace.desc Errortrace.escape
+exception Escape of type_expr Errortrace.escape
 
 exception Tags of label * label
 exception Cannot_expand
