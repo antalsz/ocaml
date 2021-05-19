@@ -1491,7 +1491,21 @@ Error: Signature mismatch:
        Private variant constructor(s) would be revealed
 |}];;
 
-(* ASZ: Add mismatched records *)
+module M : sig
+  type t = { x : int }
+end = struct
+  type t = private { x : int; y : bool }
+end;;
+[%%expect{|
+|}];;
+
+module M : sig
+  type t = { x : int; y : bool }
+end = struct
+  type t = private { x : int }
+end;;
+[%%expect{|
+|}];;
 
 module M : sig
   type t = A | B
@@ -1540,6 +1554,14 @@ Error: Signature mismatch:
 module M : sig
   type t = [`A]
 end = struct
+  type t = private [> `A | `B]
+end;;
+[%%expect{|
+|}];;
+
+module M : sig
+  type t = [`A]
+end = struct
   type t = private [< `A | `B]
 end;;
 [%%expect{|
@@ -1559,7 +1581,13 @@ Error: Signature mismatch:
        A private row type would be revealed
 |}];;
 
-(* ASZ: Add [> `A | `B] *)
+module M : sig
+  type t = [`A]
+end = struct
+  type t = private [< `A | `B > `A]
+end;;
+[%%expect{|
+|}];;
 
 module M : sig
   type t = < m : int >
