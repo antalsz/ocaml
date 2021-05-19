@@ -132,7 +132,6 @@ type privacy_mismatch =
   | Private_record_type
   | Private_extensible_variant
   | Private_row_type
-  | Private_object_type
 
 type label_mismatch =
   | Type of Errortrace.equality_error
@@ -231,15 +230,16 @@ let report_type_inequality env ppf err =
     (fun ppf -> Format.fprintf ppf "is not equal to the type")
 
 let report_privacy_mismatch ppf err =
-  Format.fprintf ppf
-    "[ASZ] A private %s would be revealed"
-    (match err with
-     | Private_type_abbreviation  -> "type abbreviation"
-     | Private_variant_type       -> "variant type" (* ASZ: variant constructor/s? *)
-     | Private_record_type        -> "record constructor"
-     | Private_extensible_variant -> "extensible variant"
-     | Private_row_type           -> "row type"
-     | Private_object_type        -> "object type")
+  let singular, item =
+    match err with
+    | Private_type_abbreviation  -> true,  "type abbreviation"
+    | Private_variant_type       -> false, "variant constructor(s)"
+    | Private_record_type        -> true,  "record constructor"
+    | Private_extensible_variant -> true,  "extensible variant"
+    | Private_row_type           -> true,  "row type"
+  in Format.fprintf ppf "%s %s would be revealed"
+       (if singular then "A private" else "Private")
+       item
 
 let report_label_mismatch first second env ppf err =
   match (err : label_mismatch) with
@@ -306,7 +306,8 @@ let report_variant_mismatch first second decl env ppf err =
 let report_extension_constructor_mismatch first second decl env ppf err =
   let pr fmt = Format.fprintf ppf fmt in
   match (err : extension_constructor_mismatch) with
-  | Constructor_privacy -> pr "A private extension constructor[ASZ] would be revealed."
+  | Constructor_privacy ->
+      pr "Private extension constructor(s) would be revealed."
   | Constructor_mismatch (id, ext1, ext2, err) ->
       pr "@[<hv>Constructors do not match:@;<1 2>%a@ is not the same as:\
           @;<1 2>%a@ %a@]"
@@ -491,14 +492,16 @@ let privacy_mismatch env decl1 decl2 =
       | Type_abstract, Type_abstract when Option.is_some decl2.type_manifest -> begin
           match decl1.type_manifest with
           | Some ty1 -> Some begin
-              let ty1 = Ctype.expand_head env ty1 in
-              match ty1.desc with
-              | Tvariant row when Btype.is_constr_row ~allow_ident:true (Btype.row_more row) ->
-                  Private_row_type
-              | Tobject (fi, _) when Btype.is_constr_row ~allow_ident:true (snd (Ctype.flatten_fields fi)) ->
-                  Private_object_type
-              | _ ->
-                  Private_type_abbreviation
+            let ty1 = Ctype.expand_head env ty1 in
+            match ty1.desc with
+            | Tvariant row when Btype.is_constr_row ~allow_ident:true
+                                  (Btype.row_more row) ->
+                Private_row_type
+            | Tobject (fi, _) when Btype.is_constr_row ~allow_ident:true
+                                     (snd (Ctype.flatten_fields fi)) ->
+                Private_row_type
+            | _ ->
+                Private_type_abbreviation
             end
           | None ->
               None

@@ -53,7 +53,7 @@ type 'a escape =
   { kind : 'a escape_kind;
     context : type_expr option }
 
-let map_escape_ASZ f esc =
+let map_escape f esc =
   {esc with kind = match esc.kind with
      | Equation eq -> Equation (f eq)
      | (Constructor _ | Univ _ | Self | Module_type _ | Constraint) as c -> c}

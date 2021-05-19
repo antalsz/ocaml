@@ -190,6 +190,17 @@ val expand_head_opt: Env.t -> type_expr -> type_expr
 (** The compiler's own version of [expand_head] necessary for type-based
     optimisations. *)
 
+
+(* For error traces *)
+val expand_type : Env.t -> type_expr -> Errortrace.expanded_type
+val expanded_diff :
+  Env.t ->
+  got:type_expr -> expected:type_expr ->
+  (Errortrace.expanded_type, 'variant) Errortrace.elt
+val doubled_diff :
+  got:type_expr -> expected:type_expr ->
+  (Errortrace.expanded_type, 'variant) Errortrace.elt
+
 val full_expand: may_forget_scope:bool -> Env.t -> type_expr -> type_expr
 val extract_concrete_typedecl:
         Env.t -> type_expr -> Path.t * Path.t * type_declaration

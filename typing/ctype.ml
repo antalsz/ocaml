@@ -43,7 +43,7 @@ open Local_store
      class do not depend on sharing thanks to constrained
      abbreviations. (Of course, even if some sharing is lost, typing
      will still be correct.)
-   - All nodes of a type have a level : that way, one know whether a
+   - All nodes of a type have a level : that way, one knows whether a
      node need to be duplicated or not when instantiating a type.
    - Levels of a type are decreasing (generic level being considered
      as greatest).
@@ -57,16 +57,16 @@ open Local_store
 
 (**** Errors ****)
 
-exception Unify_trace    of unification Errortrace.trace
-exception Equality_trace of comparison  Errortrace.trace
-exception Moregen_trace  of comparison  Errortrace.trace
+exception Unify_trace    of unification trace
+exception Equality_trace of comparison  trace
+exception Moregen_trace  of comparison  trace
 
 exception Unify    of unification_error
 exception Equality of equality_error
 exception Moregen  of moregen_error
-exception Subtype  of Errortrace.Subtype.error * unification_error
+exception Subtype  of Subtype.error * unification_error
 
-exception Escape of type_expr Errortrace.escape
+exception Escape of type_expr escape
 
 (* For local use: throw the appropriate exception.  Can be passed into local
    functions as a parameter *)
@@ -78,7 +78,7 @@ type _ trace_exn =
 let raise_trace_for
       (type variant)
       (tr_exn : variant trace_exn)
-      (tr     : variant Errortrace.trace) : 'a =
+      (tr     : variant trace) : 'a =
   match tr_exn with
   | Unify    -> raise (Unify_trace    tr)
   | Equality -> raise (Equality_trace tr)
@@ -2100,13 +2100,15 @@ let rec has_cached_expansion p abbrev =
 
 (**** Transform error trace ****)
 (* +++ Move it to some other place ? *)
+(* That's hard to do because it relies on the expansion machinery in Ctype,
+   but still might be nice. *)
+
+let expand_type env ty =
+  { ty       = repr ty;
+    expanded = full_expand ~may_forget_scope:true env ty }
 
 let expand_any_trace map env trace =
-  let expand_type ty =
-    { ty       = repr ty;
-      expanded = full_expand ~may_forget_scope:true env ty }
-  in
-  map expand_type trace
+  map (expand_type env) trace
 
 let expand_trace env trace =
   expand_any_trace Errortrace.map env trace
@@ -2114,16 +2116,17 @@ let expand_trace env trace =
 let expand_subtype_trace env trace =
   expand_any_trace Subtype.map env trace
 
-(* ASZ: inline these *)
+(* [expand_trace] takes care of all the expansion in this file, but we
+   occasionally need to build [Errortrace.error]s elsewhere, so we expose some
+   machinery for doing so *)
 
-let raise_Unify ~env ~trace =
-  raise (Unify {trace = expand_trace env trace})
+(* Equivalent to [expand_trace env [Diff {got; expected}]] for a single element *)
+let expanded_diff env ~got ~expected =
+  Diff { got = expand_type env got; expected = expand_type env expected }
 
-let raise_Equality ~env ~trace ~subst =
-  raise (Equality {trace = expand_trace env trace; subst})
-
-let raise_Moregen ~env ~trace =
-  raise (Moregen {trace = expand_trace env trace})
+let doubled_diff ~got ~expected =
+  Diff { got      = { ty = got;      expanded = got };
+         expected = { ty = expected; expanded = expected } }
 
 (**** Unification ****)
 
@@ -3177,7 +3180,7 @@ let unify env ty1 ty2 =
   with
     Unify_trace trace ->
       undo_compress snap;
-      raise_Unify ~env:!env ~trace
+      raise (Unify {trace = expand_trace !env trace})
 
 let unify_gadt ~equations_level:lev ~allow_recursive (env:Env.t ref) ty1 ty2 =
   try
@@ -3213,7 +3216,10 @@ let unify_var env t1 t2 =
         reset_trace_gadt_instances reset_tracing;
       with Unify_trace trace ->
         reset_trace_gadt_instances reset_tracing;
-        raise_Unify ~env ~trace:(Diff { got = t1; expected = t2 } :: trace)
+        let expanded_trace =
+          expand_trace env @@ Diff { got = t1; expected = t2 } :: trace
+        in
+        raise (Unify {trace = expanded_trace})
       end
   | _ ->
       unify (ref env) t1 t2
@@ -3306,7 +3312,7 @@ let filter_method env name priv ty =
     | _ ->
         raise_unexplained_for Unify
   with Unify_trace trace ->
-    raise_Unify ~env ~trace (* (Unify {trace}) *) (* ASZ *)
+    raise (Unify {trace = expand_trace env trace})
 
 let check_filter_method env name priv ty =
   ignore(filter_method env name priv ty)
@@ -3597,7 +3603,7 @@ let moregeneral env inst_nongen pat_sch subj_sch =
        try
          moregen inst_nongen (TypePairs.create 13) env patt subj
        with Moregen_trace trace ->
-         raise_Moregen ~env ~trace)
+         raise (Moregen {trace = expand_trace env trace}))
     ~always:(fun () -> current_level := old_level)
 
 let is_moregeneral env inst_nongen pat_sch subj_sch =
@@ -3654,9 +3660,9 @@ let matches env ty ty' =
   | () ->
       if not (all_distinct_vars env vars) then begin
         backtrack snap;
-        (* ASZ: Ensure we see this *)
-        raise (Matches_failure (env, {trace = [Diff { got = { ty = ty; expanded=ty } (* ASZ *);
-                                                      expected = { ty = ty'; expanded = ty' } (* ASZ *) }]}))
+        raise (Matches_failure
+                 (env,
+                  {trace = [doubled_diff ~got:ty ~expected:ty']})) (* ASZ: [expanded_diff env] makes the errors worse? *)
       end;
       backtrack snap
   | exception Unify err ->
@@ -3908,7 +3914,7 @@ let equal env rename tyl1 tyl2 =
   try eqtype_list rename (TypePairs.create 11) subst env tyl1 tyl2
   with Equality_trace trace ->
     normalize_subst subst;
-    raise_Equality ~env ~subst:!subst ~trace
+    raise (Equality {trace = expand_trace env trace; subst = !subst})
 
 let is_equal env rename tyl1 tyl2 =
   match equal env rename tyl1 tyl2 with

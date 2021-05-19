@@ -1304,7 +1304,14 @@ let rec has_literal_pattern p = match p.ppat_desc with
 let check_scope_escape loc env level ty =
   try Ctype.check_scope_escape env level ty
   with Escape esc ->
-    raise(Error(loc, env, Pattern_type_clash({trace=[Escape Errortrace.(map_escape_ASZ (fun ty -> {ty; expanded=ty}) esc)]}, None)))
+    raise
+      (Error
+         (loc,
+          env,
+          Pattern_type_clash
+            ({trace =
+                [Escape (Errortrace.map_escape (fun ty -> {ty; Errortrace.expanded=ty}) esc)]}, (* ASZ: [Ctype.expand_type env] makes the errors worse? *)
+             None)))
 
 type pattern_checking_mode =
   | Normal
@@ -2493,8 +2500,8 @@ let check_univars env kind exp ty_expected vars =
     raise (Error (exp.exp_loc,
                   env,
                   Less_general(kind,
-                               {trace = [Diff { got      = { ty; expanded = ty }; (* ASZ *)
-                                                expected = { ty = ty_expected; expanded = ty_expected } } (* ASZ *)]})))
+                               {trace = [Ctype.expanded_diff env
+                                           ~got:ty ~expected:ty_expected]})))
 
 let generalize_and_check_univars env kind exp ty_expected vars =
   generalize exp.exp_type;

@@ -1204,7 +1204,7 @@ Error: Signature mismatch:
          type t = private [ `A | `B ]
        is not included in
          type t = [ `A | `B ]
-       [ASZ] A private type abbreviation would be revealed
+       A private type abbreviation would be revealed
 |}];;
 
 module M : sig
@@ -1378,7 +1378,7 @@ Error: Signature mismatch:
          type t = private A
        is not included in
          type t = A
-       [ASZ] A private variant type would be revealed
+       Private variant constructor(s) would be revealed
 |}];;
 
 module M : sig
@@ -1400,7 +1400,7 @@ Error: Signature mismatch:
          type t = private A | B
        is not included in
          type t = A | B
-       [ASZ] A private variant type would be revealed
+       Private variant constructor(s) would be revealed
 |}];;
 
 module M : sig
@@ -1422,7 +1422,7 @@ Error: Signature mismatch:
          type t = private A of { x : int; y : bool; }
        is not included in
          type t = A of { x : int; y : bool; }
-       [ASZ] A private variant type would be revealed
+       Private variant constructor(s) would be revealed
 |}];;
 
 module M : sig
@@ -1444,7 +1444,7 @@ Error: Signature mismatch:
          type t = private { x : int; y : bool; }
        is not included in
          type t = { x : int; y : bool; }
-       [ASZ] A private record constructor would be revealed
+       A private record constructor would be revealed
 |}];;
 
 module M : sig
@@ -1466,7 +1466,7 @@ Error: Signature mismatch:
          type t = private A | B
        is not included in
          type t = A
-       [ASZ] A private variant type would be revealed
+       Private variant constructor(s) would be revealed
 |}];;
 
 module M : sig
@@ -1488,7 +1488,7 @@ Error: Signature mismatch:
          type t = private A
        is not included in
          type t = A | B
-       [ASZ] A private variant type would be revealed
+       Private variant constructor(s) would be revealed
 |}];;
 
 (* ASZ: Add mismatched records *)
@@ -1537,7 +1537,6 @@ Error: Signature mismatch:
        Their kinds differ.
 |}];;
 
-(* ASZ: Should this be "private row type"? *)
 module M : sig
   type t = [`A]
 end = struct
@@ -1557,10 +1556,11 @@ Error: Signature mismatch:
          type t = private [< `A | `B ]
        is not included in
          type t = [ `A ]
-       [ASZ] A private row type would be revealed
+       A private row type would be revealed
 |}];;
 
-(* ASZ: Should this be "private object type"? *)
+(* ASZ: Add [> `A | `B] *)
+
 module M : sig
   type t = < m : int >
 end = struct
@@ -1580,5 +1580,5 @@ Error: Signature mismatch:
          type t = private < m : int; .. >
        is not included in
          type t = < m : int >
-       [ASZ] A private object type would be revealed
+       A private row type would be revealed
 |}];;

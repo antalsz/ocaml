@@ -278,15 +278,15 @@ let make_constructor env type_path type_params sargs sret_type =
       begin match (Ctype.repr ret_type).desc with
         | Tconstr (p', _, _) when Path.same type_path p' -> ()
         | _ ->
-          raise
-            (Error
-               (sret_type.ptyp_loc,
-                Constraint_failed
-                  (env,
-                   {trace = [
-                      Diff { got      = { ty = ret_type; expanded = ret_type (* ASZ *) };
-                             expected = let ty = Ctype.newconstr type_path type_params in {ty; expanded=ty} (*ASZ*) }
-                     ]})))
+          raise (Error
+                   (sret_type.ptyp_loc,
+                    Constraint_failed
+                      (env, {trace =
+                               [Ctype.expanded_diff env
+                                  ~got:ret_type
+                                  ~expected:(Ctype.newconstr
+                                               type_path
+                                               type_params)]})))
       end;
       widen z;
       targs, Some tret_type, args, Some ret_type

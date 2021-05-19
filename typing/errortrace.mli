@@ -43,7 +43,7 @@ type 'a escape =
   { kind : 'a escape_kind;
     context : type_expr option }
 
-val map_escape_ASZ : ('a -> 'b) -> 'a escape -> 'b escape
+val map_escape : ('a -> 'b) -> 'a escape -> 'b escape
 
 val explain: 'a list ->
   (prev:'a option -> 'a -> 'b option) ->

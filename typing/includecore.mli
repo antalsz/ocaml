@@ -42,7 +42,6 @@ type privacy_mismatch =
   | Private_record_type
   | Private_extensible_variant
   | Private_row_type
-  | Private_object_type
 
 type label_mismatch =
   | Type of Errortrace.equality_error
