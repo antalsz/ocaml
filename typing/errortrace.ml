@@ -106,10 +106,10 @@ type ('a, 'variety) elt =
   (* Unification & Moregen; included in Equality for simplicity *)
   | Rec_occur : type_expr * type_expr -> ('a, _) elt
 
-type ('a, 'variety) tt = ('a, 'variety) elt list
+type ('a, 'variety) t = ('a, 'variety) elt list
 
-type 'variety trace = (type_expr,     'variety) tt
-type 'variety error = (expanded_type, 'variety) tt
+type 'variety trace = (type_expr,     'variety) t
+type 'variety error = (expanded_type, 'variety) t
 
 let map_elt (type variety) f : ('a, variety) elt -> ('b, variety) elt = function
   | Diff x -> Diff (map_diff f x)
@@ -157,10 +157,10 @@ module Subtype = struct
   type 'a elt =
     | Diff of 'a diff
 
-  type 'a tt = 'a elt list
+  type 'a t = 'a elt list
 
-  type trace = type_expr     tt
-  type error = expanded_type tt
+  type trace = type_expr     t
+  type error = expanded_type t
 
   let map_elt f = function
     | Diff x -> Diff (map_diff f x)

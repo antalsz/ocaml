@@ -86,17 +86,17 @@ type ('a, 'variety) elt =
   (* Unification & Moregen; included in Equality for simplicity *)
   | Rec_occur : type_expr * type_expr -> ('a, _) elt
 
-type ('a, 'variety) tt = ('a, 'variety) elt list
+type ('a, 'variety) t = ('a, 'variety) elt list
 
-type 'variety trace = (type_expr,     'variety) tt
-type 'variety error = (expanded_type, 'variety) tt
+type 'variety trace = (type_expr,     'variety) t
+type 'variety error = (expanded_type, 'variety) t
 
-val map : ('a -> 'b) -> ('a, 'variety) tt -> ('b, 'variety) tt
+val map : ('a -> 'b) -> ('a, 'variety) t -> ('b, 'variety) t
 
 val incompatible_fields :
   name:string -> got:type_expr -> expected:type_expr -> (type_expr, _) elt
 
-val swap_trace : ('a, 'variety) tt -> ('a, 'variety) tt
+val swap_trace : ('a, 'variety) t -> ('a, 'variety) t
 
 (* The traces (['variety t]) are the core error types.  However, we bundle them
    up into three "top-level" error types, which are used elsewhere:
@@ -126,10 +126,10 @@ module Subtype : sig
   type 'a elt =
     | Diff of 'a diff
 
-  type 'a tt = 'a elt list
+  type 'a t = 'a elt list
 
-  type trace = type_expr     tt
-  type error = expanded_type tt
+  type trace = type_expr     t
+  type error = expanded_type t
 
-  val map : ('a -> 'b) -> 'a tt -> 'b tt
+  val map : ('a -> 'b) -> 'a t -> 'b t
 end
