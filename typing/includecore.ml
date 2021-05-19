@@ -103,6 +103,10 @@ let value_descriptions ~loc env name
 let is_absrow env ty =
   match ty.desc with
   | Tconstr(Pident _, _, _) -> begin
+      (* This function is checking for an abstract row on the side that is being
+         included into (usually numbered with "2" in this file).  In this case,
+         the abstract row variable has been subsituted for an object or variant
+         type. *)
       match Ctype.expand_head env ty with
       | {desc=Tobject _|Tvariant _} -> true
       | _ -> false
@@ -231,8 +235,8 @@ let report_privacy_mismatch ppf err =
     "[ASZ] A private %s would be revealed"
     (match err with
      | Private_type_abbreviation  -> "type abbreviation"
-     | Private_variant_type       -> "variant type"
-     | Private_record_type        -> "record type"
+     | Private_variant_type       -> "variant type" (* ASZ: variant constructor/s? *)
+     | Private_record_type        -> "record constructor"
      | Private_extensible_variant -> "extensible variant"
      | Private_row_type           -> "row type"
      | Private_object_type        -> "object type")
@@ -487,12 +491,11 @@ let privacy_mismatch env decl1 decl2 =
       | Type_abstract, Type_abstract when Option.is_some decl2.type_manifest -> begin
           match decl1.type_manifest with
           | Some ty1 -> Some begin
-              (* ASZ: pass this in, or duplicate the work? *)
               let ty1 = Ctype.expand_head env ty1 in
               match ty1.desc with
-              | Tvariant row when is_absrow env (Btype.row_more row) ->
+              | Tvariant row when Btype.is_constr_row ~allow_ident:true (Btype.row_more row) ->
                   Private_row_type
-              | Tobject (fi, _) when is_absrow env (snd (Ctype.flatten_fields fi)) ->
+              | Tobject (fi, _) when Btype.is_constr_row ~allow_ident:true (snd (Ctype.flatten_fields fi)) ->
                   Private_object_type
               | _ ->
                   Private_type_abbreviation
@@ -648,7 +651,12 @@ let type_declarations ?(equality = false) ~loc env ~mark name
     decl1.type_attributes decl2.type_attributes
     name;
   if decl1.type_arity <> decl2.type_arity then Some Arity else
-  match privacy_mismatch env decl1 decl2 with Some err -> Some (Privacy err) | None -> (* ASZ *)
+  let err =
+    match privacy_mismatch env decl1 decl2 with
+    | Some err -> Some (Privacy err)
+    | None -> None
+  in
+  if err <> None then err else
   let err = match (decl1.type_manifest, decl2.type_manifest) with
       (_, None) ->
         begin

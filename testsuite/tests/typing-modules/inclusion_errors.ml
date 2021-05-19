@@ -1444,7 +1444,7 @@ Error: Signature mismatch:
          type t = private { x : int; y : bool; }
        is not included in
          type t = { x : int; y : bool; }
-       [ASZ] A private record type would be revealed
+       [ASZ] A private record constructor would be revealed
 |}];;
 
 module M : sig
@@ -1490,6 +1490,8 @@ Error: Signature mismatch:
          type t = A | B
        [ASZ] A private variant type would be revealed
 |}];;
+
+(* ASZ: Add mismatched records *)
 
 module M : sig
   type t = A | B
@@ -1555,7 +1557,7 @@ Error: Signature mismatch:
          type t = private [< `A | `B ]
        is not included in
          type t = [ `A ]
-       [ASZ] A private type abbreviation would be revealed
+       [ASZ] A private row type would be revealed
 |}];;
 
 (* ASZ: Should this be "private object type"? *)
@@ -1578,5 +1580,5 @@ Error: Signature mismatch:
          type t = private < m : int; .. >
        is not included in
          type t = < m : int >
-       [ASZ] A private type abbreviation would be revealed
+       [ASZ] A private object type would be revealed
 |}];;

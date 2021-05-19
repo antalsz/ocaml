@@ -2114,6 +2114,8 @@ let expand_trace env trace =
 let expand_subtype_trace env trace =
   expand_any_trace Subtype.map env trace
 
+(* ASZ: inline these *)
+
 let raise_Unify ~env ~trace =
   raise (Unify {trace = expand_trace env trace})
 
@@ -3652,6 +3654,7 @@ let matches env ty ty' =
   | () ->
       if not (all_distinct_vars env vars) then begin
         backtrack snap;
+        (* ASZ: Ensure we see this *)
         raise (Matches_failure (env, {trace = [Diff { got = { ty = ty; expanded=ty } (* ASZ *);
                                                       expected = { ty = ty'; expanded = ty' } (* ASZ *) }]}))
       end;
