@@ -1497,6 +1497,20 @@ end = struct
   type t = private { x : int; y : bool }
 end;;
 [%%expect{|
+Lines 3-5, characters 6-3:
+3 | ......struct
+4 |   type t = private { x : int; y : bool }
+5 | end..
+Error: Signature mismatch:
+       Modules do not match:
+         sig type t = private { x : int; y : bool; } end
+       is not included in
+         sig type t = { x : int; } end
+       Type declarations do not match:
+         type t = private { x : int; y : bool; }
+       is not included in
+         type t = { x : int; }
+       A private record constructor would be revealed
 |}];;
 
 module M : sig
@@ -1505,6 +1519,20 @@ end = struct
   type t = private { x : int }
 end;;
 [%%expect{|
+Lines 3-5, characters 6-3:
+3 | ......struct
+4 |   type t = private { x : int }
+5 | end..
+Error: Signature mismatch:
+       Modules do not match:
+         sig type t = private { x : int; } end
+       is not included in
+         sig type t = { x : int; y : bool; } end
+       Type declarations do not match:
+         type t = private { x : int; }
+       is not included in
+         type t = { x : int; y : bool; }
+       A private record constructor would be revealed
 |}];;
 
 module M : sig
@@ -1557,6 +1585,20 @@ end = struct
   type t = private [> `A | `B]
 end;;
 [%%expect{|
+Lines 3-5, characters 6-3:
+3 | ......struct
+4 |   type t = private [> `A | `B]
+5 | end..
+Error: Signature mismatch:
+       Modules do not match:
+         sig type t = private [> `A | `B ] end
+       is not included in
+         sig type t = [ `A ] end
+       Type declarations do not match:
+         type t = private [> `A | `B ]
+       is not included in
+         type t = [ `A ]
+       A private row type would be revealed
 |}];;
 
 module M : sig
@@ -1587,6 +1629,20 @@ end = struct
   type t = private [< `A | `B > `A]
 end;;
 [%%expect{|
+Lines 3-5, characters 6-3:
+3 | ......struct
+4 |   type t = private [< `A | `B > `A]
+5 | end..
+Error: Signature mismatch:
+       Modules do not match:
+         sig type t = private [< `A | `B > `A ] end
+       is not included in
+         sig type t = [ `A ] end
+       Type declarations do not match:
+         type t = private [< `A | `B > `A ]
+       is not included in
+         type t = [ `A ]
+       A private row type would be revealed
 |}];;
 
 module M : sig
