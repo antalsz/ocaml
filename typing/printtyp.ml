@@ -2364,7 +2364,12 @@ let error trace_format subst env tr txt1 ppf txt2 ty_expect_explanation =
   reset ();
   (* We want to substitute in the opposite order from [Eqtype] *)
   Names.add_subst (List.map (fun (ty1,ty2) -> ty2,ty1) subst);
-  let tr = prepare_trace (fun ty_exp -> Errortrace.{ty_exp with expanded = hide_variant_name ty_exp.expanded}) tr in
+  let tr =
+    prepare_trace
+      (fun ty_exp ->
+         Errortrace.{ty_exp with expanded = hide_variant_name ty_exp.expanded})
+      tr
+  in
   let mis = mismatch txt1 env tr in
   match tr with
   | [] -> assert false

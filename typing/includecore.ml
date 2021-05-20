@@ -489,7 +489,8 @@ let privacy_mismatch env decl1 decl2 =
       | Type_record  _, Type_record  _ -> Some Private_record_type
       | Type_variant _, Type_variant _ -> Some Private_variant_type
       | Type_open,      Type_open      -> Some Private_extensible_variant
-      | Type_abstract, Type_abstract when Option.is_some decl2.type_manifest -> begin
+      | Type_abstract, Type_abstract
+        when Option.is_some decl2.type_manifest -> begin
           match decl1.type_manifest with
           | Some ty1 -> Some begin
             let ty1 = Ctype.expand_head env ty1 in
