@@ -13,3 +13,13 @@ Error: The type of this class,
        contains non-collapsible conjunctive types in constraints.
        Type int is not compatible with type float
 |}]
+
+class type ct = object
+  method x : int
+end
+
+class c (y : 'a * float) : ct = object
+  method x = y
+end
+[%%expect{|
+|}]
