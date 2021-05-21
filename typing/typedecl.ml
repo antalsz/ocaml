@@ -278,15 +278,16 @@ let make_constructor env type_path type_params sargs sret_type =
       begin match (Ctype.repr ret_type).desc with
         | Tconstr (p', _, _) when Path.same type_path p' -> ()
         | _ ->
-          raise (Error
-                   (sret_type.ptyp_loc,
-                    Constraint_failed
-                      (env, {trace =
-                               [Ctype.expanded_diff env
-                                  ~got:ret_type
-                                  ~expected:(Ctype.newconstr
-                                               type_path
-                                               type_params)]})))
+          let trace =
+            (* In general, with constraint errors, we avoid expanding the types,
+               because expansion bypasses the constraints and produces confusing
+               errors; this case is no different. *)
+            [Ctype.unexpanded_diff
+               ~got:ret_type
+               ~expected:(Ctype.newconstr type_path type_params)]
+          in
+          (* ASZ: Add test for this case *)
+          raise (Error (sret_type.ptyp_loc, Constraint_failed (env, {trace})))
       end;
       widen z;
       targs, Some tret_type, args, Some ret_type
@@ -489,7 +490,11 @@ let rec check_constraints_rec env loc visited ty =
           raise (Error(loc, Unavailable_type_constructor path)) in
       let ty' = Ctype.newconstr path (Ctype.instance_list decl.type_params) in
       begin
-        try Ctype.matches env ty ty'
+        (* We don't expand the error trace because that produces types that
+           *already* violate the constraints -- we need to report a problem with
+           the unexpanded types, or we get errors that talk about the same type
+           twice.  This is generally true for constraint errors. *)
+        try Ctype.matches ~expand_error_trace:false env ty ty'
         with Ctype.Matches_failure (env, err) ->
           raise (Error(loc, Constraint_failed (env, err)))
       end;

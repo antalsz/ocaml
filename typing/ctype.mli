@@ -190,14 +190,22 @@ val expand_head_opt: Env.t -> type_expr -> type_expr
 (** The compiler's own version of [expand_head] necessary for type-based
     optimisations. *)
 
+(* Expansion of types for error traces; lives here instead of in [Errortrace]
+   because the expansion machinery lives here. *)
 
-(* For error traces *)
+(* Expand a single type *)
 val expand_type : Env.t -> type_expr -> Errortrace.expanded_type
+
+(* Create an [Errortrace.Diff] by expanding the two types *)
 val expanded_diff :
   Env.t ->
   got:type_expr -> expected:type_expr ->
   (Errortrace.expanded_type, 'variant) Errortrace.elt
-val doubled_diff :
+
+(* Create an [Errortrace.Diff] by *duplicating* the two types, so that each
+   one's expansion is identical to itself.  Despite the name, does create
+   [Errortrace.expanded_type]s. *)
+val unexpanded_diff :
   got:type_expr -> expected:type_expr ->
   (Errortrace.expanded_type, 'variant) Errortrace.elt
 
@@ -237,9 +245,11 @@ val rigidify: type_expr -> type_expr list
         (* "Rigidify" a type and return its type variable *)
 val all_distinct_vars: Env.t -> type_expr list -> bool
         (* Check those types are all distinct type variables *)
-val matches: Env.t -> type_expr -> type_expr -> unit
+val matches: expand_error_trace:bool -> Env.t -> type_expr -> type_expr -> unit
         (* Same as [moregeneral false], implemented using the two above
-           functions and backtracking. Ignore levels *)
+           functions and backtracking. Ignore levels. The [expand_error_trace]
+           flag controls whether the error raised performs expansion; this
+           should almost always be [true]. *)
 val does_match: Env.t -> type_expr -> type_expr -> bool
         (* Same as [matches], but returns a [bool] *)
 

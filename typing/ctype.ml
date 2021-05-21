@@ -2116,17 +2116,19 @@ let expand_trace env trace =
 let expand_subtype_trace env trace =
   expand_any_trace Subtype.map env trace
 
-(* [expand_trace] takes care of all the expansion in this file, but we
-   occasionally need to build [Errortrace.error]s elsewhere, so we expose some
-   machinery for doing so *)
+(* [expand_trace] takes care of most of the expansion in this file, but we
+   occasionally need to build [Errortrace.error]s in other ways/elsewhere, so we
+   expose some machinery for doing so
+*)
 
 (* Equivalent to [expand_trace env [Diff {got; expected}]] for a single
    element *)
 let expanded_diff env ~got ~expected =
   Diff { got = expand_type env got; expected = expand_type env expected }
 
-(* Transform a [type_expr] into an [expanded_type] without expanding *)
-let doubled_diff ~got ~expected =
+(* Diff while transforming a [type_expr] into an [expanded_type] without
+   expanding *)
+let unexpanded_diff ~got ~expected =
   Diff { got      = { ty = got;      expanded = got };
          expected = { ty = expected; expanded = expected } }
 
@@ -3654,7 +3656,7 @@ let all_distinct_vars env vars =
       (tyl := ty :: !tyl; is_Tvar ty))
     vars
 
-let matches env ty ty' =
+let matches ~expand_error_trace env ty ty' =
   let snap = snapshot () in
   let vars = rigidify ty in
   cleanup_abbrev ();
@@ -3662,9 +3664,12 @@ let matches env ty ty' =
   | () ->
       if not (all_distinct_vars env vars) then begin
         backtrack snap;
-        raise (Matches_failure
-                 (env,
-                  {trace = [doubled_diff ~got:ty ~expected:ty']})) (* ASZ: [expanded_diff env] makes the errors worse? *)
+        let diff =
+          if expand_error_trace
+          then expanded_diff env
+          else unexpanded_diff
+        in
+        raise (Matches_failure (env, {trace = [diff ~got:ty ~expected:ty']}))
       end;
       backtrack snap
   | exception Unify err ->
@@ -3672,7 +3677,7 @@ let matches env ty ty' =
       raise (Matches_failure (env, err))
 
 let does_match env ty ty' =
-  match matches env ty ty' with
+  match matches ~expand_error_trace:false env ty ty' with
   | () -> true
   | exception Matches_failure (_, _) -> false
 
