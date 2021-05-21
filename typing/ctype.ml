@@ -791,8 +791,6 @@ let check_scope_escape env level ty =
   try check_scope_escape env level ty; backtrack snap
   with Escape e ->
     backtrack snap;
-    (* ASZ: Why is this the only thing that's Some ty?  Try adding this to
-       [update_level] *)
     raise (Escape { e with context = Some ty })
 
 let rec update_scope scope ty =
