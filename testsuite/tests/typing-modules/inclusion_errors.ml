@@ -594,6 +594,14 @@ Error: Signature mismatch:
 |}];;
 
 module M : sig
+  val f : 'a -> float
+end = struct
+  let f : 'b -> int = fun _ -> 0
+end;;
+[%%expect{|
+|}]
+
+module M : sig
   val x : 'a list ref
 end = struct
   let x = ref []
