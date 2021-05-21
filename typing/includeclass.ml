@@ -112,5 +112,5 @@ let report_error mode ppf = function
   |  [] -> ()
   | err :: errs ->
       let print_errs ppf errs =
-         List.iter (fun err -> fprintf ppf "@ %a" (include_err mode) err) errs in
+        List.iter (fun err -> fprintf ppf "@ %a" (include_err mode) err) errs in
       fprintf ppf "@[<v>%a%a@]" (include_err mode) err print_errs errs

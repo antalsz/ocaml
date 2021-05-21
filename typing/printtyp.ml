@@ -1074,8 +1074,9 @@ let rec tree_of_typexp mode ty =
     | Tconstr(p, tyl, _abbrev) ->
         let p', s = best_type_path p in
         let tyl' = apply_subst s tyl in
-        if is_nth s && not (tyl'=[]) then tree_of_typexp mode (List.hd tyl') else
-        Otyp_constr (tree_of_path Type p', tree_of_typlist mode tyl')
+        if is_nth s && not (tyl'=[])
+        then tree_of_typexp mode (List.hd tyl')
+        else Otyp_constr (tree_of_path Type p', tree_of_typlist mode tyl')
     | Tvariant row ->
         let row = row_repr row in
         let fields =
@@ -2417,12 +2418,20 @@ let report_error trace_format ppf mode env tr
     error trace_format mode subst env tr txt1 ppf txt2
       type_expected_explanation)
 
-let report_unification_error ppf env ({trace} : Errortrace.unification_error) =
-  report_error Unification ppf Type env ?subst:None trace
-let report_equality_error ppf mode env ({subst; trace} : Errortrace.equality_error) =
-  report_error Equality ppf mode env ~subst ?type_expected_explanation:None trace
-let report_moregen_error ppf mode env ({trace} : Errortrace.moregen_error) =
-  report_error Moregen ppf mode env ?subst:None ?type_expected_explanation:None trace
+let report_unification_error
+      ppf env ({trace} : Errortrace.unification_error) =
+  report_error Unification ppf Type env
+    ?subst:None trace
+
+let report_equality_error
+      ppf mode env ({subst; trace} : Errortrace.equality_error) =
+  report_error Equality ppf mode env
+    ~subst ?type_expected_explanation:None trace
+
+let report_moregen_error
+      ppf mode env ({trace} : Errortrace.moregen_error) =
+  report_error Moregen ppf mode env
+    ?subst:None ?type_expected_explanation:None trace
 
 let report_comparison_error ppf mode env = function
   | Errortrace.Equality_error error -> report_equality_error ppf mode env error

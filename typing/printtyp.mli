@@ -172,7 +172,8 @@ val class_declaration: Ident.t -> formatter -> class_declaration -> unit
 val tree_of_cltype_declaration:
     Ident.t -> class_type_declaration -> rec_status -> out_sig_item
 val cltype_declaration: Ident.t -> formatter -> class_type_declaration -> unit
-val type_expansion: type_or_scheme -> Format.formatter -> Errortrace.expanded_type -> unit
+val type_expansion :
+  type_or_scheme -> Format.formatter -> Errortrace.expanded_type -> unit
 val prepare_expansion: Errortrace.expanded_type -> Errortrace.expanded_type
 val report_ambiguous_type_error:
     formatter -> Env.t -> (Path.t * Path.t) -> (Path.t * Path.t) list ->
