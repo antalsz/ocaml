@@ -1304,14 +1304,10 @@ let rec has_literal_pattern p = match p.ppat_desc with
 let check_scope_escape loc env level ty =
   try Ctype.check_scope_escape env level ty
   with Escape esc ->
-    raise
-      (Error
-         (loc,
-          env,
-          Pattern_type_clash
-            ({trace =
-                [Escape (Errortrace.map_escape (fun ty -> {ty; Errortrace.expanded=ty}) esc)]}, (* ASZ: [Ctype.expand_type env] makes the errors worse? *)
-             None)))
+    (* We don't expand the type here because if we do, we might expand to the
+       type that escaped, leading to confusing error messages. *)
+    let trace = Errortrace.[Escape (map_escape unexpanded_type esc)] in
+    raise (Error(loc, env, Pattern_type_clash({trace}, None)))
 
 type pattern_checking_mode =
   | Normal

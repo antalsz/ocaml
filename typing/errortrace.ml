@@ -29,6 +29,9 @@ let print_pos ppf = function
   | Second -> fprintf ppf "second"
 
 type expanded_type = { ty: type_expr; expanded: type_expr }
+
+let unexpanded_type ty = { ty; expanded = ty }
+
 type 'a diff = { got: 'a; expected: 'a }
 
 let map_diff f r =

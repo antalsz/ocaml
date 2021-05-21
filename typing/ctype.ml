@@ -2144,13 +2144,12 @@ let expand_subtype_trace env trace =
 (* Equivalent to [expand_trace env [Diff {got; expected}]] for a single
    element *)
 let expanded_diff env ~got ~expected =
-  Diff { got = expand_type env got; expected = expand_type env expected }
+  Diff (map_diff (expand_type env) {got; expected})
 
 (* Diff while transforming a [type_expr] into an [expanded_type] without
    expanding *)
 let unexpanded_diff ~got ~expected =
-  Diff { got      = { ty = got;      expanded = got };
-         expected = { ty = expected; expanded = expected } }
+  Diff (map_diff unexpanded_type {got; expected})
 
 (**** Unification ****)
 
