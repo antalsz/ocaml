@@ -279,14 +279,13 @@ let make_constructor env type_path type_params sargs sret_type =
         | Tconstr (p', _, _) when Path.same type_path p' -> ()
         | _ ->
           let trace =
-            (* In general, with constraint errors, we avoid expanding the types,
-               because expansion bypasses the constraints and produces confusing
-               errors; this case is no different. *)
+            (* Expansion is not helpful here -- the restriction on GADT return
+               types is purely syntactic.  (In the worst case, expansion
+               produces gibberish.) *)
             [Ctype.unexpanded_diff
                ~got:ret_type
                ~expected:(Ctype.newconstr type_path type_params)]
           in
-          (* ASZ: Add test for this case *)
           raise (Error (sret_type.ptyp_loc, Constraint_failed (env, {trace})))
       end;
       widen z;
