@@ -947,6 +947,24 @@ let lower_contravariant env ty =
   simple_abbrevs := Mnil;
   lower_contravariant env !nongen_level (Hashtbl.create 7) false ty
 
+(* Generalize a class type *)
+let rec generalize_class_type gen =
+  function
+    Cty_constr (_, params, cty) ->
+      List.iter gen params;
+      generalize_class_type gen cty
+  | Cty_signature {csig_self = sty; csig_vars = vars; csig_inher = inher} ->
+      gen sty;
+      Vars.iter (fun _ (_, _, ty) -> gen ty) vars;
+      List.iter (fun (_,tl) -> List.iter gen tl) inher
+  | Cty_arrow (_, ty, cty) ->
+      gen ty;
+      generalize_class_type gen cty
+
+let generalize_class_type vars =
+  let gen = if vars then generalize else generalize_structure in
+  generalize_class_type gen
+
 (* Correct the levels of type [ty]. *)
 let correct_levels ty =
   duplicate_type ty
@@ -3599,7 +3617,8 @@ let moregeneral env inst_nongen pat_sch subj_sch =
      then copied with [duplicate_type].  That way, its levels won't be
      changed.
   *)
-  let subj = duplicate_type (instance subj_sch) in
+  let subj_inst = instance subj_sch in
+  let subj = duplicate_type subj_inst in
   current_level := generic_level;
   (* Duplicate generic variables *)
   let patt = instance pat_sch in
@@ -3609,6 +3628,14 @@ let moregeneral env inst_nongen pat_sch subj_sch =
        try
          moregen inst_nongen (TypePairs.create 13) env patt subj
        with Moregen_trace trace ->
+         (* In order to properly detect and print weak variables when printing
+            this error, we need to regeneralize the levels of the types after
+            they were instantiated at [generic_level - 1] above.  Because
+            [moregen] does some unification that we need to preserve for more
+            legible error messages, we have to manually perform the
+            rengeneralization rather than backtracking. *)
+         current_level := generic_level - 2;
+         generalize subj_inst;
          raise (Moregen {trace = expand_trace env trace}))
     ~always:(fun () -> current_level := old_level)
 
@@ -4097,6 +4124,18 @@ let match_class_types ?(trace=true) env pat_sch subj_sch =
     | error ->
         CM_Class_type_mismatch (env, patt, subj)::error
   in
+  begin match res with
+  | []   -> ()
+  | _::_ ->
+    (* If [res] is nonempty, we've found an error.  In order to properly detect
+       and print weak variables when printing this error, we need to
+       regeneralize the levels of the types after they were instantiated at
+       [generic_level - 1] above.  Because we may do unification that we need to
+       preserve for more legible error messages, we have to manually perform the
+       rengeneralization rather than backtracking. *)
+    current_level := generic_level - 2;
+    generalize_class_type true subj_inst;
+  end;
   current_level := old_level;
   res
 

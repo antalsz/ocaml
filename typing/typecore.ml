@@ -5624,7 +5624,7 @@ let report_error ~loc env = function
              let ty_exp = Printtyp.prepare_expansion ty_exp in
              fprintf ppf "This expression cannot be coerced to type@;<1 2>%a;@ \
                           it has type"
-             Printtyp.type_expansion ty_exp)
+             (Printtyp.type_expansion Type) ty_exp)
           (function ppf ->
              fprintf ppf "but is here used with type");
         if b then

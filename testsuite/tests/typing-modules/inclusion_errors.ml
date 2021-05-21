@@ -500,7 +500,7 @@ Error: Modules do not match:
        val r : '_weak1 list ref ref
      is not included in
        val r : Choice.t list ref ref
-     The type 'weak1 list ref ref is not compatible with the type
+     The type '_weak1 list ref ref is not compatible with the type
        Choice.t list ref ref
      The type constructor Choice.t would escape its scope
 |}];;
@@ -599,6 +599,21 @@ end = struct
   let f : 'b -> int = fun _ -> 0
 end;;
 [%%expect{|
+Lines 3-5, characters 6-3:
+3 | ......struct
+4 |   let f : 'b -> int = fun _ -> 0
+5 | end..
+Error: Signature mismatch:
+       Modules do not match:
+         sig val f : 'b -> int end
+       is not included in
+         sig val f : 'a -> float end
+       Values do not match:
+         val f : 'b -> int
+       is not included in
+         val f : 'a -> float
+       The type 'a -> int is not compatible with the type 'a -> float
+       Type int is not compatible with type float
 |}]
 
 module M : sig
@@ -620,8 +635,8 @@ Error: Signature mismatch:
          val x : '_weak2 list ref
        is not included in
          val x : 'a list ref
-       The type 'weak2 list ref is not compatible with the type 'a list ref
-       Type 'weak2 is not compatible with type 'a
+       The type '_weak2 list ref is not compatible with the type 'a list ref
+       Type '_weak2 is not compatible with type 'a
 |}];;
 
 module M = struct let r = ref [] end;;
@@ -642,7 +657,7 @@ Error: Signature mismatch:
          val r : '_weak3 list ref
        is not included in
          val r : t list ref
-       The type 'weak3 list ref is not compatible with the type t list ref
+       The type '_weak3 list ref is not compatible with the type t list ref
        The type constructor t would escape its scope
 |}];;
 
@@ -685,8 +700,8 @@ Error: Signature mismatch:
          val r : '_weak4 list ref
        is not included in
          val r : T.s list ref
-       The type 'weak4 list ref is not compatible with the type T.s list ref
-       Type 'weak4 is not compatible with type T.s = T.t
+       The type '_weak4 list ref is not compatible with the type T.s list ref
+       Type '_weak4 is not compatible with type T.s = T.t
        This instance of T.t is ambiguous:
        it would escape the scope of its equation
 |}];;

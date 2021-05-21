@@ -1709,8 +1709,8 @@ let report_error ppf = function
              All uses need to match the definition for the recursive type \
              to be regular.@]"
             (Path.name definition)
-            !Oprint.out_type (Printtyp.tree_of_typexp false defined_as)
-            !Oprint.out_type (Printtyp.tree_of_typexp false used_as)
+            !Oprint.out_type (Printtyp.tree_of_typexp Type defined_as)
+            !Oprint.out_type (Printtyp.tree_of_typexp Type used_as)
       | _ :: _ ->
           fprintf ppf
             "@[<hv>This recursive type is not regular.@ \
@@ -1720,8 +1720,8 @@ let report_error ppf = function
              All uses need to match the definition for the recursive type \
              to be regular.@]"
             (Path.name definition)
-            !Oprint.out_type (Printtyp.tree_of_typexp false defined_as)
-            !Oprint.out_type (Printtyp.tree_of_typexp false used_as)
+            !Oprint.out_type (Printtyp.tree_of_typexp Type defined_as)
+            !Oprint.out_type (Printtyp.tree_of_typexp Type used_as)
             pp_expansions expansions
       end
   | Inconsistent_constraint (env, err) ->

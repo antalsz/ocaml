@@ -124,6 +124,9 @@ val lower_contravariant: Env.t -> type_expr -> unit
 val generalize_structure: type_expr -> unit
         (* Generalize the structure of a type, lowering variables
            to !current_level *)
+val generalize_class_type :
+  bool -> class_type -> unit
+        (* Generalize the components of a class type *)
 val generalize_spine: type_expr -> unit
         (* Special function to generalize a method during inference *)
 val correct_levels: type_expr -> type_expr
