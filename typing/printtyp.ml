@@ -2140,8 +2140,9 @@ let explain_fixed_row pos expl = match expl with
   | Fixed_private ->
     dprintf "The %a variant type is private" Errortrace.print_pos pos
   | Univar x ->
+    mark_loops x;
     dprintf "The %a variant type is bound to the universal type variable %a"
-      Errortrace.print_pos pos type_expr x
+      Errortrace.print_pos pos marked_type_expr x
   | Reified p ->
     dprintf "The %a variant type is bound to %t"
       Errortrace.print_pos pos (print_path p)
@@ -2185,9 +2186,11 @@ let explain_variant (type variety) : variety Errortrace.variant -> _ = function
              Errortrace.print_pos (Errortrace.swap_position pos))
 
 let explain_escape pre = function
-  | Errortrace.Univ u -> Some(
-      dprintf "%t@,The universal variable %a would escape its scope"
-        pre type_expr u)
+  | Errortrace.Univ u ->
+      mark_loops u;
+      Some(
+        dprintf "%t@,The universal variable %a would escape its scope"
+          pre marked_type_expr u)
   | Errortrace.Constructor p -> Some(
       dprintf
         "%t@,@[The type constructor@;<1 2>%a@ would escape its scope@]"
@@ -2198,11 +2201,13 @@ let explain_escape pre = function
         "%t@,@[The module type@;<1 2>%a@ would escape its scope@]"
         pre path p
     )
-  | Errortrace.Equation Errortrace.{ty = _; expanded = t} -> Some(
-      dprintf "%t @,@[<hov>This instance of %a is ambiguous:@ %s@]"
-        pre type_expr t
-        "it would escape the scope of its equation"
-    )
+  | Errortrace.Equation Errortrace.{ty = _; expanded = t} ->
+      mark_loops t;
+      Some(
+        dprintf "%t @,@[<hov>This instance of %a is ambiguous:@ %s@]"
+          pre marked_type_expr t
+          "it would escape the scope of its equation"
+      )
   | Errortrace.Self ->
       Some (dprintf "%t@,Self type cannot escape its class" pre)
   | Errortrace.Constraint ->
@@ -2229,11 +2234,14 @@ let explanation (type variety) intro prev env
     let pre =
       match context, kind, prev with
       | Some ctx, _, _ ->
-        dprintf "@[%t@;<1 2>%a@]" intro type_expr ctx
+        mark_loops ctx;
+        dprintf "@[%t@;<1 2>%a@]" intro marked_type_expr ctx
       | None, Univ _, Some(Errortrace.Incompatible_fields {name; diff}) ->
+        mark_loops diff.got;
+        mark_loops diff.expected;
         dprintf "@,@[The method %s has type@ %a,@ \
                  but the expected method type was@ %a@]"
-          name type_expr diff.got type_expr diff.expected
+          name marked_type_expr diff.got marked_type_expr diff.expected
       | _ -> ignore
     in
     explain_escape pre kind
@@ -2244,11 +2252,12 @@ let explanation (type variety) intro prev env
   | Errortrace.Obj o ->
     explain_object o
   | Errortrace.Rec_occur(x,y) ->
-    reset_and_mark_loops y;
+    mark_loops x;
+    mark_loops y;
     begin match get_desc x with
     | Tvar _ | Tunivar _  ->
         Some(dprintf "@,@[<hov>The type variable %a occurs inside@ %a@]"
-               type_expr x type_expr y)
+               marked_type_expr x marked_type_expr y)
     | _ ->
         (* We had a delayed unification of the type variable with
            a non-variable after the occur check. *)
