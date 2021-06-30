@@ -1128,9 +1128,11 @@ Line 2, characters 3-4:
        ^
 Error: This expression has type < m : 'a. 'a * < m : 'a * 'b > > as 'b
        but an expression was expected of type
-         < m : 'a. 'a * (< m : 'a * < m : 'c. 'c * 'd as 'e > > as 'd) >
-       The method m has type 'a. 'a * 'd, but the expected method type was
-       'c. 'e
+         < m : 'a. 'a * (< m : 'a * < m : 'c. 'c * 'd > > as 'd) >
+       The method m has type
+       'a. 'a * (< m : 'a * < m : 'c. 'c * 'd > > as 'd),
+       but the expected method type was
+       'c. 'c * < m : 'a * < m : 'c. 'e > > as 'e
        The universal variable 'a would escape its scope
 |}];;
 
@@ -1175,10 +1177,11 @@ Error: Signature mismatch:
          val f : (< m : 'a. 'a * ('a * 'b) > as 'b) -> unit
        is not included in
          val f : < m : 'b. 'b * ('b * < m : 'c. 'c * 'a > as 'a) > -> unit
-       The type (< m : 'a. 'a * ('a * 'd) as 'e > as 'd) -> unit
+       The type (< m : 'a. 'a * ('a * 'd) > as 'd) -> unit
        is not compatible with the type
-         < m : 'b. 'b * ('b * < m : 'c. 'c * 'f as 'g > as 'f) > -> unit
-       The method m has type 'a. 'e, but the expected method type was 'c. 'g
+         < m : 'b. 'b * ('b * < m : 'c. 'c * 'e > as 'e) > -> unit
+       The method m has type 'a. 'a * ('a * < m : 'a. 'f >) as 'f,
+       but the expected method type was 'c. 'c * ('b * < m : 'c. 'g >) as 'g
        The universal variable 'b would escape its scope
 |}];;
 
@@ -1252,8 +1255,7 @@ Lines 2-3, characters 2-47:
 3 |     :> <m:'b. (<p:int;q:int;..> as 'b) -> int>)..
 Error: Type < m : 'a. (< p : int; .. > as 'a) -> int > is not a subtype of
          < m : 'b. (< p : int; q : int; .. > as 'b) -> int >
-       Type < p : int; q : int; .. > as 'c is not a subtype of
-         < p : int; .. > as 'd
+       Type < p : int; q : int; .. > is not a subtype of < p : int; .. >
 |}];;
 
 (* Keep sharing the epsilons *)
