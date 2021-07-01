@@ -800,76 +800,37 @@ let nameable_row row =
        | _ -> true)
     row.row_fields
 
-let iter_type_expr_for_printing
-      ~initially_visited
-      ~visit
-      ~visitable
-      ~visited
-      ~variable
-      ~visit_objects
-      ~poly_binders_considered_visited
-  =
-  let visiting_object ~px ~state ~state_if_checking ~should_visit ~unvisited =
-    match visit_objects with
-    | None ->
-        unvisited state
-    | Some visited_objects ->
-        if List.memq px !visited_objects
-        then visited px
-        else begin
-          let state = state_if_checking state in
-          if should_visit state then
-            visited_objects := px :: !visited_objects;
-          unvisited state
-        end
-  in
-  let rec loop get_visited ty =
-    let tty = Transient_expr.repr ty in
-    let px = proxy ty in
-    if List.memq px (get_visited ()) && visitable ty
-    then visited px
-    else begin
-      let get_visited = visit px get_visited in
-      let loop = loop get_visited in
-      match tty.desc with
-      | Tvar _ | Tunivar _ ->
-          variable ty
-      | Tconstr(p, tyl, _) ->
-          let _p', s = best_type_path p in
-          List.iter loop (apply_subst s tyl)
-      | Tvariant row ->
-          visiting_object ~px
-            ~state:row ~state_if_checking:row_repr
-            ~should_visit:(fun row -> not (static_row row))
-            ~unvisited:(fun row ->
-              match row.row_name with
-              | Some(_p, tyl) when nameable_row row ->
-                  List.iter loop tyl
-              | _ ->
-                  iter_row loop row)
-      | Tobject(fi, nm) ->
-          visiting_object ~px
-            ~state:() ~state_if_checking:Fun.id
-            ~should_visit:(fun () -> opened_object ty)
-            ~unvisited:(fun () ->
-              match !nm with
-              | None ->
-                  let fields, _ = flatten_fields fi in
-                  List.iter
-                    (fun (_, kind, ty) ->
-                       if field_kind_repr kind = Fpresent then
-                         loop ty)
-                    fields
-              | Some (_, l) ->
-                  List.iter loop (List.tl l))
-      | Tpoly(ty, tyl) when poly_binders_considered_visited ->
-          List.iter (fun ty -> visited (proxy ty)) tyl;
-          loop ty
+let iter_type_expr_for_printing f ty =
+  match get_desc ty with
+  | Tconstr(p, tyl, _) ->
+      let (_p', s) = best_type_path p in
+      List.iter f (apply_subst s tyl)
+  | Tvariant row -> begin
+      let row = row_repr row in
+      match row.row_name with
+      | Some(_p, tyl) when nameable_row row ->
+          List.iter f tyl
       | _ ->
-          Btype.iter_type_expr loop ty
+          iter_row f row
     end
-  in
-  loop initially_visited
+  | Tobject (fi, nm) -> begin
+      match !nm with
+      | None ->
+          let fields, _ = flatten_fields fi in
+          List.iter
+            (fun (_, kind, ty) ->
+               if field_kind_repr kind = Fpresent then
+                 f ty)
+            fields
+      | Some (_, l) ->
+          List.iter f (List.tl l)
+    end
+  | Tfield(_, kind, ty1, ty2) ->
+      if field_kind_repr kind = Fpresent then
+        f ty1;
+      f ty2
+  | _ ->
+      Btype.iter_type_expr f ty
 
 module Names : sig
   val reset_names : unit -> unit
@@ -912,24 +873,24 @@ end = struct
     named_vars := [];
     visited_for_named_vars := []
 
-  let add_named_var ty =
-    match ty.desc with
+  let add_named_var tty =
+    match tty.desc with
       Tvar (Some name) | Tunivar (Some name) ->
         if List.mem name !named_vars then () else
         named_vars := name :: !named_vars
     | _ -> ()
 
-  let add_named_vars =
-    iter_type_expr_for_printing
-      ~initially_visited:(fun () -> !visited_for_named_vars)
-      ~visit:(fun px get ->
-        visited_for_named_vars := px :: !visited_for_named_vars;
-        get)
-      ~visitable:(fun _ -> true)
-      ~visited:(fun _ -> ())
-      ~variable:(fun ty -> add_named_var (Transient_expr.repr ty))
-      ~visit_objects:None
-      ~poly_binders_considered_visited:false
+  let rec add_named_vars ty =
+    let tty = Transient_expr.repr ty in
+    let px = proxy ty in
+    if not (List.memq px !visited_for_named_vars) then begin
+      visited_for_named_vars := px :: !visited_for_named_vars;
+      match tty.desc with
+      | Tvar _ | Tunivar _ ->
+          add_named_var tty
+      | _ ->
+          iter_type_expr_for_printing add_named_vars ty
+    end
 
   let rec substitute ty =
     match List.assq ty !name_subst with
@@ -1040,6 +1001,7 @@ let add_delayed t =
   if not (List.memq t !delayed) then delayed := t :: !delayed
 
 let is_aliased_proxy px = List.memq px !aliased
+
 let is_aliased ty = is_aliased_proxy (proxy ty)
 
 let add_alias_proxy px =
@@ -1061,16 +1023,32 @@ let aliasable ty =
       not (is_nth (snd (best_type_path p)))
   | _ -> true
 
-let mark_loops =
-  iter_type_expr_for_printing
-    ~initially_visited:(fun () -> [])
-    ~visit:(fun px get ->
-      fun () -> px :: get ())
-    ~visitable:aliasable
-    ~visited:add_alias_proxy
-    ~variable:(fun _ -> ())
-    ~visit_objects:(Some visited_objects)
-    ~poly_binders_considered_visited:true;;
+let should_visit_object ty =
+  match get_desc ty with
+  | Tvariant row -> not (static_row row)
+  | Tobject _ -> opened_object ty
+  | _ -> false
+
+let rec mark_loops_rec visited ty =
+  let tty = Transient_expr.repr ty in
+  let px = proxy ty in
+  if List.memq px visited && aliasable ty then add_alias_proxy px else
+    let visited = px :: visited in
+    match tty.desc with
+    | Tvariant _ | Tobject _ ->
+        if List.memq px !visited_objects then add_alias_proxy px else begin
+          if should_visit_object ty then
+            visited_objects := px :: !visited_objects;
+          iter_type_expr_for_printing (mark_loops_rec visited) ty
+        end
+    | Tpoly(ty, tyl) ->
+        List.iter add_alias tyl;
+        mark_loops_rec visited ty
+    | _ ->
+        iter_type_expr_for_printing (mark_loops_rec visited) ty
+
+let mark_loops ty =
+  mark_loops_rec [] ty;;
 
 let prepare_type ty =
   reserve_names ty;
